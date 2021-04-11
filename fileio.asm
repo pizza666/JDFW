@@ -1,0 +1,15 @@
+; defs
+
+SETNAME
+SETFLS
+OPEN
+CHKOUT
+READST
+CLOSE
+CLRCHN
+CHROUT
+
+*=$1000
+lda #1
+ldx #8
+ädy 
