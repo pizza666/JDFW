@@ -2,11 +2,29 @@
 *=$801
 !basic $80d
 
-; consts
+; #  conts go here - outsourcing
+; #  if it gets to large
+; ######################################
+
+; zero pages (use thrifty)
 
 WALLMASK1				= $00fb	; 1st wallmask register
 WALLMASK2				= $00fc ; 2nd wallmask registesr
 WALLMASKT				= $00fe ; temporary wallmask
+
+; keyboard
+
+KEYROWS 				=	$dc00	; peek
+KEYCOLS					= $dc01 ; poke
+
+KEYROW_1				= %11111110 ;$fe
+KEYROW_2				= %11111101	;$fd
+KEYROW_3				= %11111011 ;$fb
+KEYROW_4				= %11110111 ;$f7
+KEYROW_5				= %11101111 ;$ef
+KEYROW_6				= %11011111 ;$df
+KEYROW_7				= %10111111 ;$bf
+KEYROW_8				= %01111111 ;$7f
 
 ; drawing consts
 
@@ -37,13 +55,13 @@ WALLMASKT				= $00fe ; temporary wallmask
 							;			123	  possible map positions											
 							;     465   draw walls in ascending
 						  ;			798	  order to get correct  														
-							;			AxB	  canvas layers		 								
+							;			BxA	  canvas layers		 								
 							;															
 							;			87654321														
-							lda #%11000000
+							lda #%00000000
 							sta WALLMASK1
-							;			-----AB9
-							lda #%00000001
+							;			-----BA9
+							lda #%00000010
 							sta WALLMASK2
 							; load inital walls (for testing)
 
@@ -53,15 +71,13 @@ WALLMASKT				= $00fe ; temporary wallmask
 																	
 							; start the game loop
 							
-gameloop			ldy #5
-delay			    lda $d012
-			        cmp #$ff
-		         	bne delay
-		         	dey
-		         	bne delay
-
+gameloop			
+waitraster		lda $d012
+			        cmp #$fb
+		         	bne waitraster
+							; rewrite the key loop with lsr maybe?
 							lda #$7f
-key_1					sta $dc00
+key_1					sta KEYROWS
 							lda $dc01
 							and #1
 							bne key_2		
@@ -81,16 +97,25 @@ key_2					lda $dc01
 							sta SCREEN+$65
 							jsr initCanvas
 key_3					lda #$fd
-							sta $dc00
+							sta KEYROWS
 							lda $dc01
 							and #1
-							bne key_4
+							bne key_A
 							lda #4
 							eor WALLMASK1
 							sta WALLMASK1						
 							lda #$33
 							sta SCREEN+$65
 							jsr initCanvas	
+key_A					lda $dc01
+							and #4
+							bne key_4
+							lda #2
+							eor WALLMASK2
+							sta WALLMASK2						
+							lda #$01
+							sta SCREEN+$65
+							jsr initCanvas						
 key_4					lda $dc01
 							and #8
 							bne key_5
@@ -101,7 +126,7 @@ key_4					lda $dc01
 							sta SCREEN+$65
 							jsr initCanvas
 key_5					lda #$fb
-							sta $dc00
+							sta KEYROWS
 							lda $dc01
 							and #1
 							bne key_6
@@ -121,7 +146,7 @@ key_6					lda $dc01
 							sta SCREEN+$65
 							jsr initCanvas	
 key_7					lda #$f7
-							sta $dc00
+							sta KEYROWS
 							lda $dc01
 							and #1
 							bne key_8
@@ -131,8 +156,8 @@ key_7					lda #$f7
 							lda #$37
 							sta SCREEN+$65
 							jsr initCanvas
-key_8					lda #$f7
-							sta $dc00
+key_8					lda #KEYROW_4
+							sta KEYROWS
 							lda $dc01
 							and #8
 							bne key_9
@@ -142,8 +167,9 @@ key_8					lda #$f7
 							lda #$38
 							sta SCREEN+$65
 							jsr initCanvas
+							
 key_9					lda #$ef
-							sta $dc00
+							sta KEYROWS
 							lda $dc01
 							and #1
 							bne key_0		
@@ -153,7 +179,7 @@ key_9					lda #$ef
 							lda #$39
 							sta SCREEN+$65														
 							jsr initCanvas									
-key_0					sta $dc00
+key_0					sta KEYROWS
 							lda $dc01
 							and #8
 							bne gameloopEnd		
@@ -172,14 +198,27 @@ gameloopEnd		jmp gameloop
 
 ceilingColor	!byte	COLOR_DARKGREY
 floorColor		!byte COLOR_BLUE
+px						!byte 0,0
+py						!byte 0,0
+map
+chunk0				!byte %11111111
+							!byte %10000001
+							!byte %10000001
+							!byte %10000001
+							!byte %10000001
+							!byte %10000001
+							!byte %10000001
+							!byte %11111111
 
 !zone subRoutines
 ; #  sub routines here
 ; ######################################
 
+; rotating and moving
+
 ; drawing stuff - TODO fixing and shorten this with indirect addressing?
 
-initCanvas		jsr drawHorizon	
+initCanvas		jsr drawHorizon
 							jsr drawCeiling
 							jsr drawFloor
 drawCanvas		lda WALLMASK1
@@ -211,15 +250,18 @@ drawCanvas		lda WALLMASK1
 +						  lda WALLMASK2		; next wallmask byte here
 							sta WALLMASKT
 							lsr WALLMASKT
-							bcc .end
-							jsr drawWall9								
-.end					rts
+							bcc +		
+							jsr drawWall9
++							lsr WALLMASKT
+							bcc +
+							jsr drawWallA													
++							rts
 							
 
 drawWall1			ldx #5		
 							lda #$a0
 							ldy #COLOR_DARKGREY
-drawWall1L		sta SCREEN+$0119,x
+-							sta SCREEN+$0119,x
 							sta SCREEN+$0119+40,x
 							sta SCREEN+$0119+80,x
 							pha
@@ -229,7 +271,7 @@ drawWall1L		sta SCREEN+$0119,x
 							sta SCREENCOLOR+$0119+80,x
 							pla
 							dex
-							bpl drawWall1L
+							bpl -
 							rts
 
 drawWall2			ldx #5		
@@ -251,7 +293,7 @@ drawWall2			ldx #5
 drawWall3			ldx #5		
 							lda #$a0
 							ldy #COLOR_DARKGREY
-drawWall3L		sta SCREEN+$0125,x
+-							sta SCREEN+$0125,x
 							sta SCREEN+$0125+40,x
 							sta SCREEN+$0125+80,x
 							pha
@@ -261,7 +303,7 @@ drawWall3L		sta SCREEN+$0125,x
 							sta SCREENCOLOR+$0125+80,x
 							pla
 							dex
-							bpl drawWall3L
+							bpl -
 							rts			
 							
 drawWall4			lda #$a0
@@ -336,8 +378,7 @@ dW5L					sta SCREEN+$00d7,x
 							sta SCREENCOLOR+$00d7+240,x
 							pla
 							dex
-							bpl dW5L
-							
+							bpl dW5L				
 							lda #$a0
 							ldx #1
 							ldy #COLOR_GREY
@@ -355,22 +396,18 @@ dW5L2					sta SCREEN+$00d5+40,x								;  []
 							sta SCREENCOLOR+$00d5+200,x
 							pla
 							dex
-							bpl dW5L2
-							
+							bpl dW5L2	
 							lda #$e9
 							sta SCREEN+$00d6						;  /
-							sta SCREEN+$00d6+39					; /
-							
+							sta SCREEN+$00d6+39					; /					
 							lda #$5f							
 							sta SCREEN+$00d6+199    ; \
-							sta SCREEN+$00d6+240    ;  \
-														
+							sta SCREEN+$00d6+240    ;  \					
 							lda #COLOR_GREY
 							sta SCREENCOLOR+$00d6+199
 							sta SCREENCOLOR+$00d6+240
 							sta SCREENCOLOR+$00d6
 							sta SCREENCOLOR+$00d6+39
-							
 							rts									
 
 drawWall6			lda #$a0
@@ -442,8 +479,78 @@ drawWall9			lda #$a0
 							dex
 							bpl -
 							rts							
+
+drawWallA			lda #$a0
+							sta SCREEN+$0051
+							sta SCREEN+$0051+40
+							sta SCREEN+$0051+80
+							sta SCREEN+$0051+120
+							sta SCREEN+$0051+160
+							sta SCREEN+$0051+200
+							sta SCREEN+$0051+240
+							sta SCREEN+$0051+280
+							sta SCREEN+$0051+320
+							sta SCREEN+$0051+360
+							sta SCREEN+$0051+400
+							sta SCREEN+$0051+440
+							sta SCREEN+$0051+480
+							lda #$df
+							sta SCREEN+$0029
+							lda #$69
+							sta SCREEN+$0259
+							lda #COLOR_WHITE
+							sta SCREENCOLOR+$0051
+							sta SCREENCOLOR+$0051+40
+							sta SCREENCOLOR+$0051+80
+							sta SCREENCOLOR+$0051+120
+							sta SCREENCOLOR+$0051+160
+							sta SCREENCOLOR+$0051+200
+							sta SCREENCOLOR+$0051+240
+							sta SCREENCOLOR+$0051+280
+							sta SCREENCOLOR+$0051+320
+							sta SCREENCOLOR+$0051+360
+							sta SCREENCOLOR+$0051+400
+							sta SCREENCOLOR+$0051+440
+							sta SCREENCOLOR+$0051+480
+							sta SCREENCOLOR+$0029
+							sta SCREENCOLOR+$0259
+							rts					
 							
-							
+drawWallB			lda #$a0
+							sta SCREEN+$0051
+							sta SCREEN+$0051+40
+							sta SCREEN+$0051+80
+							sta SCREEN+$0051+120
+							sta SCREEN+$0051+160
+							sta SCREEN+$0051+200
+							sta SCREEN+$0051+240
+							sta SCREEN+$0051+280
+							sta SCREEN+$0051+320
+							sta SCREEN+$0051+360
+							sta SCREEN+$0051+400
+							sta SCREEN+$0051+440
+							sta SCREEN+$0051+480
+							lda #$df
+							sta SCREEN+$0029
+							lda #$69
+							sta SCREEN+$0259
+							lda #COLOR_WHITE
+							sta SCREENCOLOR+$0051
+							sta SCREENCOLOR+$0051+40
+							sta SCREENCOLOR+$0051+80
+							sta SCREENCOLOR+$0051+120
+							sta SCREENCOLOR+$0051+160
+							sta SCREENCOLOR+$0051+200
+							sta SCREENCOLOR+$0051+240
+							sta SCREENCOLOR+$0051+280
+							sta SCREENCOLOR+$0051+320
+							sta SCREENCOLOR+$0051+360
+							sta SCREENCOLOR+$0051+400
+							sta SCREENCOLOR+$0051+440
+							sta SCREENCOLOR+$0051+480
+							sta SCREENCOLOR+$0029
+							sta SCREENCOLOR+$0259
+							rts									
 							
 drawWall7			lda #$a0
 							ldy #COLOR_WHITE
@@ -495,7 +602,7 @@ dW7L					lda #$a0
 							ldy #COLOR_LIGHTGREY
 							tya
 							ldx #2
-dW7C					sta SCREENCOLOR+$0052+120,x
+-							sta SCREENCOLOR+$0052+120,x
 							sta SCREENCOLOR+$0052+160,x
 							sta SCREENCOLOR+$0052+200,x
 							sta SCREENCOLOR+$0052+240,x
@@ -503,7 +610,7 @@ dW7C					sta SCREENCOLOR+$0052+120,x
 							sta SCREENCOLOR+$0052+320,x
 							sta SCREENCOLOR+$0052+360,x
 							dex
-							bpl dW7C
+							bpl -
 							sta SCREENCOLOR+$0051+1
 							sta SCREENCOLOR+$0051+42
 							sta SCREENCOLOR+$0051+83
@@ -533,8 +640,6 @@ drawWall8			lda #$a0
 							sta SCREEN+$0062+439
 							sta SCREEN+$0062+479
 							sta SCREEN+$0062+480
-
-
 							ldx#3
 dW8L					lda #$a0
 							sta SCREEN+$005f+120,x
@@ -545,8 +650,7 @@ dW8L					lda #$a0
 							sta SCREEN+$005f+320,x
 							sta SCREEN+$005f+360,x
 							dex
-							bpl dW8L
-							
+							bpl dW8L					
 							lda #$e9
 							sta SCREEN+$005f+2
 							sta SCREEN+$005f+41
@@ -572,7 +676,7 @@ dW8L					lda #$a0
 							ldy #COLOR_LIGHTGREY
 							tya
 							ldx #2
-dW8C					sta SCREENCOLOR+$005f+120,x
+-							sta SCREENCOLOR+$005f+120,x
 							sta SCREENCOLOR+$005f+160,x
 							sta SCREENCOLOR+$005f+200,x
 							sta SCREENCOLOR+$005f+240,x
@@ -580,7 +684,7 @@ dW8C					sta SCREENCOLOR+$005f+120,x
 							sta SCREENCOLOR+$005f+320,x
 							sta SCREENCOLOR+$005f+360,x
 							dex
-							bpl dW8C							
+							bpl -							
 							sta SCREENCOLOR+$0062+39
 							sta SCREENCOLOR+$0062+78
 							sta SCREENCOLOR+$0062+79				
@@ -588,15 +692,12 @@ dW8C					sta SCREENCOLOR+$005f+120,x
 							sta SCREENCOLOR+$0062+398					
 							sta SCREENCOLOR+$0062+439
 							sta SCREENCOLOR+$0062+479
-
 							sta SCREENCOLOR+$005f+2
 							sta SCREENCOLOR+$005f+41
 							sta SCREENCOLOR+$005f+80
-							
 							sta SCREENCOLOR+$005f+400
 							sta SCREENCOLOR+$005f+441
 							sta SCREENCOLOR+$005f+482
-
 							rts								
 							
 drawHorizon		ldx #17
