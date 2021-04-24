@@ -12,24 +12,40 @@ WALLMASK1				= $00fb	; 1st wallmask register
 WALLMASK2				= $00fc ; 2nd wallmask registesr
 WALLMASKT				= $00fe ; temporary wallmask
 
+; name our zero pages
+LOB_DATA				= $40		; we use this for data addressing
+HIB_DATA				= $41
+LOB_SCREEN			= $fb 	; this for screen positioning
+HIB_SCREEN			= $fc
+
+; map const
+MAPWIDTH				= 8
+MAPHIGHT				= 8		
+W							  = $d6		;normal wall
+S								= $20		;normal floor/sky		
+MAPPOS 					= SCREEN+$8e
+
 ; keyboard
-
-KEYROWS 				=	$dc00	; peek
-KEYCOLS					= $dc01 ; poke
-
-KEYROW_1				= %11111110 ;$fe
-KEYROW_2				= %11111101	;$fd
-KEYROW_3				= %11111011 ;$fb
-KEYROW_4				= %11110111 ;$f7
-KEYROW_5				= %11101111 ;$ef
-KEYROW_6				= %11011111 ;$df
-KEYROW_7				= %10111111 ;$bf
-KEYROW_8				= %01111111 ;$7f
-
+KEYROWS 				=	$dc00			; peek
+KEYCOLS					= $dc01 		; poke
+ 														;+----+---------+-------------------------------------------------------------------------------------------------------+
+ 														;|    |         |                                Peek from $dc01 (code in paranthesis):                                 |
+ 														;|row:| $dc00:  +------------+------------+------------+------------+------------+------------+------------+------------+
+ 														;|    |         | 128  BIT 7 | 64 BIT 6   | 32 BIT 5   | 16 BIT 4   | 8  BIT 3   | 4  BIT 2   | 2  BIT 1   | 1  BIT 0   |
+ 														;+----+---------+------------+------------+------------+------------+------------+------------+------------+------------+
+KEYROW_1				= %11111110 ; (254/$fe) 		| DOWN  ($  )|   F5  ($  )|   F3  ($  )|   F1  ($  )|   F7  ($  )| RIGHT ($  )| RETURN($  )|DELETE ($  )|
+KEYROW_2				= %11111101	; (253/$fd)     |LEFT-SH($  )|   e   ($05)|   s   ($13)|   z   ($1a)|   4   ($34)|   a   ($01)|   w   ($17)|   3   ($33)|
+KEYROW_3				= %11111011 ; (251/$fb)     |   x   ($18)|   t   ($14)|   f   ($06)|   c   ($03)|   6   ($36)|   d   ($04)|   r   ($12)|   5   ($35)|
+KEYROW_4				= %11110111 ; (247/$f7)     |   v   ($16)|   u   ($15)|   h   ($08)|   b   ($02)|   8   ($38)|   g   ($07)|   y   ($19)|   7   ($37)|
+KEYROW_5				= %11101111 ; (239/$ef)     |   n   ($0e)|   o   ($0f)|   k   ($0b)|   m   ($0d)|   0   ($30)|   j   ($0a)|   i   ($09)|   9   ($39)|
+KEYROW_6				= %11011111 ; (223/$df)     |   ,   ($2c)|   @   ($00)|   :   ($3a)|   .   ($2e)|   -   ($2d)|   l   ($0c)|   p   ($10)|   +   ($2b)|
+KEYROW_7				= %10111111 ; (191/$bf)     |   /   ($2f)|   ^   ($1e)|   =   ($3d)|RGHT-SH($  )|  HOME ($  )|   ;   ($3b)|   *   ($2a)|   £   ($1c)|
+KEYROW_8				= %01111111 ; (127/$7f)     | STOP  ($  )|   q   ($11)|COMMODR($  )| SPACE ($20)|   2   ($32)|CONTROL($  )|  <-   ($1f)|   1   ($31)|
+														;+----+---------+------------+------------+------------+------------+------------+------------+------------+------------+
 ; drawing consts
 
-
 *=$80d
+!zone initGame
 							; black screen and clear
 							lda #00
 							sta VIC_BORDERCOLOR
@@ -50,6 +66,7 @@ KEYROW_8				= %01111111 ;$7f
 							jsr drawBordesH   ; draw the borders and
 							jsr drawBorderV   ; decorations
 							jsr drawDiamonds  ;
+							jsr drawMap;
 							
 							;															
 							;			123	  possible map positions											
@@ -61,24 +78,26 @@ KEYROW_8				= %01111111 ;$7f
 							lda #%00000000
 							sta WALLMASK1
 							;			-----BA9
-							lda #%00000010
+							lda #%00000110
 							sta WALLMASK2
 							; load inital walls (for testing)
 
 							; draw the initial canvase
 							jsr initCanvas
-							
-																	
+																							
 							; start the game loop
-							
+
+!zone gameloop							
 gameloop			
-waitraster		lda $d012
-			        cmp #$fb
+waitraster		lda VIC_RASTERROWPOS
+			        cmp #$50
 		         	bne waitraster
-							; rewrite the key loop with lsr maybe?
-							lda #$7f
+
+							; TODO refactor the key loop with lsr maybe							
+							
+							lda #KEYROW_8
 key_1					sta KEYROWS
-							lda $dc01
+							lda KEYCOLS
 							and #1
 							bne key_2		
 							lda #1
@@ -87,7 +106,7 @@ key_1					sta KEYROWS
 							lda #$31
 							sta SCREEN+$65														
 							jsr initCanvas												
-key_2					lda $dc01
+key_2					lda KEYCOLS
 							and #8
 							bne key_3
 							lda #2
@@ -96,9 +115,9 @@ key_2					lda $dc01
 							lda #$32
 							sta SCREEN+$65
 							jsr initCanvas
-key_3					lda #$fd
+key_3					lda #KEYROW_2
 							sta KEYROWS
-							lda $dc01
+							lda KEYCOLS
 							and #1
 							bne key_A
 							lda #4
@@ -107,7 +126,7 @@ key_3					lda #$fd
 							lda #$33
 							sta SCREEN+$65
 							jsr initCanvas	
-key_A					lda $dc01
+key_A					lda KEYCOLS
 							and #4
 							bne key_4
 							lda #2
@@ -116,7 +135,7 @@ key_A					lda $dc01
 							lda #$01
 							sta SCREEN+$65
 							jsr initCanvas						
-key_4					lda $dc01
+key_4					lda KEYCOLS
 							and #8
 							bne key_5
 							lda #8
@@ -125,9 +144,9 @@ key_4					lda $dc01
 							lda #$34
 							sta SCREEN+$65
 							jsr initCanvas
-key_5					lda #$fb
+key_5					lda #KEYROW_3
 							sta KEYROWS
-							lda $dc01
+							lda KEYCOLS
 							and #1
 							bne key_6
 							lda #16
@@ -136,7 +155,7 @@ key_5					lda #$fb
 							lda #$35
 							sta SCREEN+$65
 							jsr initCanvas
-key_6					lda $dc01
+key_6					lda KEYCOLS
 							and #8
 							bne key_7
 							lda #32
@@ -145,9 +164,9 @@ key_6					lda $dc01
 							lda #$36
 							sta SCREEN+$65
 							jsr initCanvas	
-key_7					lda #$f7
+key_7					lda #KEYROW_4
 							sta KEYROWS
-							lda $dc01
+							lda KEYCOLS
 							and #1
 							bne key_8
 							lda #64
@@ -156,21 +175,27 @@ key_7					lda #$f7
 							lda #$37
 							sta SCREEN+$65
 							jsr initCanvas
-key_8					lda #KEYROW_4
-							sta KEYROWS
-							lda $dc01
+key_8					lda KEYCOLS
 							and #8
-							bne key_9
+							bne key_B
 							lda #128
 							eor WALLMASK1
 							sta WALLMASK1						
 							lda #$38
 							sta SCREEN+$65
 							jsr initCanvas
-							
-key_9					lda #$ef
+key_B					lda KEYCOLS
+							and #16
+							bne key_9
+							lda #4
+							eor WALLMASK2
+							sta WALLMASK2						
+							lda #$02
+							sta SCREEN+$65
+							jsr initCanvas												
+key_9					lda #KEYROW_5
 							sta KEYROWS
-							lda $dc01
+							lda KEYCOLS
 							and #1
 							bne key_0		
 							lda #1
@@ -179,8 +204,7 @@ key_9					lda #$ef
 							lda #$39
 							sta SCREEN+$65														
 							jsr initCanvas									
-key_0					sta KEYROWS
-							lda $dc01
+key_0					lda KEYCOLS
 							and #8
 							bne gameloopEnd		
 							lda #0
@@ -200,15 +224,9 @@ ceilingColor	!byte	COLOR_DARKGREY
 floorColor		!byte COLOR_BLUE
 px						!byte 0,0
 py						!byte 0,0
-map
-chunk0				!byte %11111111
-							!byte %10000001
-							!byte %10000001
-							!byte %10000001
-							!byte %10000001
-							!byte %10000001
-							!byte %10000001
-							!byte %11111111
+
+
+						
 
 !zone subRoutines
 ; #  sub routines here
@@ -216,7 +234,49 @@ chunk0				!byte %11111111
 
 ; rotating and moving
 
-; drawing stuff - TODO fixing and shorten this with indirect addressing?
+; drawing stuff - TODO fixing and shorten this with indirect addressing
+*=$0A00
+map						!byte W,W,W,W,W,W,W,W
+							!byte W,S,W,S,S,S,S,W
+							!byte W,S,S,S,S,S,S,W
+							!byte W,S,S,S,S,S,S,W
+							!byte W,S,S,S,S,S,S,W
+							!byte W,S,S,S,S,W,S,W
+							!byte W,S,S,S,S,W,S,W
+							!byte W,W,W,W,W,W,W,W
+							
+drawMap				lda #<map						; get low byte of the map
+							sta LOB_DATA				; store in zpage
+							lda #>map						; same for
+							sta HIB_DATA				; highbyte
+							lda #<MAPPOS				; get low byte of the mappos (screen ram w/ offset)
+							sta LOB_SCREEN			; store in zpage
+							lda #>MAPPOS				; same for...
+							sta HIB_SCREEN			; highbyte
+							
+							ldx #0							; x = 0 for our row number
+dm1						ldy #MAPWIDTH-1			; y = mapwidth-1 is the last byte of a map data row
+- 						lda (LOB_DATA),y		; store the data indirect addressed with y
+						  sta (LOB_SCREEN),y  ; in the screen position
+							dey									; decrement y
+							bpl -								; is y still positive branc to -
+							
+							lda LOB_SCREEN			; were done with the row and load the low byte of the screen
+							clc									; clear the carry
+							adc #40							; add 40 ( screen row has 40 chars/bytes)
+							sta LOB_SCREEN							
+							lda HIB_SCREEN      ; carry is not clear
+ 							adc #0              ; we add it to the high byte of the screen
+ 							sta HIB_SCREEN      ; and store it
+							lda LOB_DATA
+							adc #MAPWIDTH				; next 8 bytes of the data. TODO make this variable for the data width
+							sta LOB_DATA
+							inx
+							cpx #MAPHIGHT
+							bne dm1
+							
+							rts
+							
 
 initCanvas		jsr drawHorizon
 							jsr drawCeiling
@@ -254,7 +314,10 @@ drawCanvas		lda WALLMASK1
 							jsr drawWall9
 +							lsr WALLMASKT
 							bcc +
-							jsr drawWallA													
+							jsr drawWallA	
++							lsr WALLMASKT
+							bcc +
+							jsr drawWallB							
 +							rts
 							
 
@@ -517,39 +580,39 @@ drawWallA			lda #$a0
 							rts					
 							
 drawWallB			lda #$a0
-							sta SCREEN+$0051
-							sta SCREEN+$0051+40
-							sta SCREEN+$0051+80
-							sta SCREEN+$0051+120
-							sta SCREEN+$0051+160
-							sta SCREEN+$0051+200
-							sta SCREEN+$0051+240
-							sta SCREEN+$0051+280
-							sta SCREEN+$0051+320
-							sta SCREEN+$0051+360
-							sta SCREEN+$0051+400
-							sta SCREEN+$0051+440
-							sta SCREEN+$0051+480
-							lda #$df
-							sta SCREEN+$0029
-							lda #$69
-							sta SCREEN+$0259
+							sta SCREEN+$0062
+							sta SCREEN+$0062+40
+							sta SCREEN+$0062+80
+							sta SCREEN+$0062+120
+							sta SCREEN+$0062+160
+							sta SCREEN+$0062+200
+							sta SCREEN+$0062+240
+							sta SCREEN+$0062+280
+							sta SCREEN+$0062+320
+							sta SCREEN+$0062+360
+							sta SCREEN+$0062+400
+							sta SCREEN+$0062+440
+							sta SCREEN+$0062+480
+							lda #$e9
+							sta SCREEN+$003a
+							lda #$5f
+							sta SCREEN+$026a
 							lda #COLOR_WHITE
-							sta SCREENCOLOR+$0051
-							sta SCREENCOLOR+$0051+40
-							sta SCREENCOLOR+$0051+80
-							sta SCREENCOLOR+$0051+120
-							sta SCREENCOLOR+$0051+160
-							sta SCREENCOLOR+$0051+200
-							sta SCREENCOLOR+$0051+240
-							sta SCREENCOLOR+$0051+280
-							sta SCREENCOLOR+$0051+320
-							sta SCREENCOLOR+$0051+360
-							sta SCREENCOLOR+$0051+400
-							sta SCREENCOLOR+$0051+440
-							sta SCREENCOLOR+$0051+480
-							sta SCREENCOLOR+$0029
-							sta SCREENCOLOR+$0259
+							sta SCREENCOLOR+$0062
+							sta SCREENCOLOR+$0062+40
+							sta SCREENCOLOR+$0062+80
+							sta SCREENCOLOR+$0062+120
+							sta SCREENCOLOR+$0062+160
+							sta SCREENCOLOR+$0062+200
+							sta SCREENCOLOR+$0062+240
+							sta SCREENCOLOR+$0062+280
+							sta SCREENCOLOR+$0062+320
+							sta SCREENCOLOR+$0062+360
+							sta SCREENCOLOR+$0062+400
+							sta SCREENCOLOR+$0062+440
+							sta SCREENCOLOR+$0062+480
+							sta SCREENCOLOR+$003a
+							sta SCREENCOLOR+$026a
 							rts									
 							
 drawWall7			lda #$a0

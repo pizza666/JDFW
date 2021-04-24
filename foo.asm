@@ -12,7 +12,7 @@ respectively change the code...
 
 -> KickAssembler
 -------------------------------------------------------*/
-.pc = $1000 
+.pc = $1000
 
 .const tiledatamem  = 48    //hi-byte start address tile data (=$3000)
 
@@ -29,22 +29,22 @@ respectively change the code...
 
   lda #$0a    //in this case: map width=number of tiles left-right
   sta mapX    //change for required map width...
-        
+
   lda #$00
   sta map
   lda #$38
   sta map+1   //map: $3800
-        
-  lda #$00      
+
+  lda #$00
   sta attribs
   lda #$39
   sta attribs+1   //attributes: $3900
-        
+
   lda #$00
   sta screen
   lda #$04
   sta screen+1    //screen: $0400
-        
+
   lda #$09    //set colours
   sta $d021
   lda #$00
@@ -53,14 +53,14 @@ respectively change the code...
   sta $d022
   lda #$01
   sta $d023
-    
-  lda #$18    
+
+  lda #$18
   sta $d018   //screen mem= $0400, char mem= $2000
   lda #$d8
   sta $d016   //multicolour
-        
+
   jsr decoder
-        
+
   lda #$08    //black
   ldx #$00    //use required code here
 !:  sta $d800,x   //to colour the screen
@@ -69,32 +69,32 @@ respectively change the code...
   sta $db00,x
   inx
   bne !-
-        jmp*  
-  
-decoder:lda map       
-  sta mapdata     
+        jmp*
+
+decoder:lda map
+  sta mapdata
   lda map+1
   sta mapdata+1   //set actual map pointer
-        
-  lda #$04    //4 rows per tile   
-  sta tileY       
+
+  lda #$04    //4 rows per tile
+  sta tileY
   lda #$03    //4 columns per tile
-  sta tileX       
-              
+  sta tileX
+
   lda #$0a    //number of tiles left-right
   sta NumberTilesX  //#$08 in case of 5x5 tiles
-        
+
   lda #$05    //number of tiles top-bottom
-  sta NumberTilesY  //=20 screen rows     
-        
+  sta NumberTilesY  //=20 screen rows
+
   lda screen    //prepare for printing
-  sta printchar+1     
+  sta printchar+1
   lda screen+1
-  sta printchar+2     
-        
+  sta printchar+2
+
 readmap:ldy #$00
   lda (mapdata),y   //read actual tile number from map data
-  
+
   and #$0f    //calculate tile address
   asl     //use lo-/hi-byte-tables for 5x5 tiles instead
   asl
@@ -110,7 +110,7 @@ readmap:ldy #$00
   clc
         adc #tiledatamem
   sta tiledata+1    //hi-byte tile data
-        
+
   ldx #$03    //4 columns, #$04 for 5x5 tiles
   ldy tileX
 readchar:lda (tiledata),y   //read actual char from tile data
@@ -118,11 +118,11 @@ printchar:sta $ffff,x   //print actual char
   dey
   dex
   bpl readchar
-        
+
   inc mapdata   //read next tile from map
   bne !+
   inc mapdata+1
-        
+
 !:  lda printchar+1   //add four columns
   clc     //to print next tile
   adc #$04
@@ -131,8 +131,8 @@ printchar:sta $ffff,x   //print actual char
   inc printchar+2
 
 !:  dec NumberTilesX  //all tiles left-right done?
-  bne readmap       
-        
+  bne readmap
+
   lda #$0a    //reset number of tiles left-right
   sta NumberTilesX
   lda tileX   //next tile row
@@ -148,19 +148,19 @@ printchar:sta $ffff,x   //print actual char
 
 !:  dec tileY   //all tile rows done?
   bne readmap
-        
-  lda #$04    //reset tileY 
+
+  lda #$04    //reset tileY
   sta tileY
   lda #$03    //reset tileX
-  sta tileX     
+  sta tileX
   lda mapdata   //next map row
   clc
-  adc mapX        
+  adc mapX
   sta mapdata
   bcc !+
-  inc mapdata+1     
+  inc mapdata+1
 
 !:  dec NumberTilesY  //all tiles top-bottom done?
   beq !+
-  jmp readmap 
-!:  rts 
+  jmp readmap
+!:  rts

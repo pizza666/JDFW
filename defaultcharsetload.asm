@@ -4,9 +4,9 @@
 
 !zone CONSTS
 ; imports
-!source "const_memmap.asm"
-!source "const_colors.asm"
-!source "const_kernal.asm"
+!source "_includes\const_memmap.asm"
+!source "_includes\const_colors.asm"
+!source "_includes\const_kernal.asm"
 ; local const
 
  			ldx #0
@@ -62,4 +62,4 @@ update_screen
 
 charScreen
 !media "bgBrown.charscreen",char
-!source "wait.asm"
+!source "_includes\wait.asm"

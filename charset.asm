@@ -1,4 +1,4 @@
-*=$0801   ; starting address of the program 
+*=$0801   ; starting address of the program
 !byte $0c,$08,$e2,$07,$9e,$20,$32,$30,$36,$32,$00,$00,$00 ; 2018 SYS 2062
 
 SCREEN  = $0400

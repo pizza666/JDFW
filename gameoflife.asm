@@ -5,9 +5,9 @@
 
 !zone CONSTS
 ; imports
-!source "const_memmap.asm"
-!source "const_colors.asm"
-!source "const_kernal.asm"
+!source "_includes\const_memmap.asm"
+!source "_includes\const_colors.asm"
+!source "_includes\const_kernal.asm"
 ; local const
 ; chars (SCREEN)
 SPACE   		= $20
@@ -176,7 +176,7 @@ bitmapin	!byte %00000000,%00000000,%00000000,%00000000,%00000000
 					!byte %00000000,%00000000,%00000000,%00000000,%00000000
 					
 !zone SUBS	; load sub routines here     					
-!source "wait.asm"
+!source "_includes\wait.asm"
 !source "printdec.asm"
 
 clear       lda #SPACE
