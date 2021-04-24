@@ -7,7 +7,6 @@
 ; ######################################
 
 ; zero pages (use thrifty)
-
 WALLMASK1				= $00fb	; 1st wallmask register
 WALLMASK2				= $00fc ; 2nd wallmask registesr
 WALLMASKT				= $00fe ; temporary wallmask
@@ -23,7 +22,11 @@ MAPWIDTH				= 8
 MAPHIGHT				= 8		
 W							  = $d6		;normal wall
 S								= $20		;normal floor/sky		
-MAPPOS 					= SCREEN+$8e
+MAPPOS 					= SCREEN+$b6
+NORTH						= %10001000 ; $88 - 136
+EAST						= %01000100 ; $44 - 68
+SOUTH						= %00100010 ; $22 - 34
+WEST						= %00010001 ; $11 - 17
 
 ; keyboard
 KEYROWS 				=	$dc00			; peek
@@ -90,7 +93,7 @@ KEYROW_8				= %01111111 ; (127/$7f)     | STOP  ($  )|   q   ($11)|COMMODR($  )|
 !zone gameloop							
 gameloop			
 waitraster		lda VIC_RASTERROWPOS
-			        cmp #$50
+			        cmp #$ff
 		         	bne waitraster
 
 							; TODO refactor the key loop with lsr maybe							
@@ -119,42 +122,73 @@ key_3					lda #KEYROW_2
 							sta KEYROWS
 							lda KEYCOLS
 							and #1
-							bne key_A
+							bne key_W
 							lda #4
 							eor WALLMASK1
 							sta WALLMASK1						
 							lda #$33
 							sta SCREEN+$65
 							jsr initCanvas	
+key_W					lda #KEYROW_2
+							sta KEYROWS
+							lda KEYCOLS
+							and #2
+							bne key_A
+							dec py
+							lda #$17
+							sta SCREEN+$65
+							jsr initCanvas								
 key_A					lda KEYCOLS
 							and #4
 							bne key_4
-							lda #2
-							eor WALLMASK2
-							sta WALLMASK2						
+							dec px
+							
+						  lda pd	; rotate player left
+							asl
+							rol pd
+							
 							lda #$01
 							sta SCREEN+$65
 							jsr initCanvas						
 key_4					lda KEYCOLS
 							and #8
-							bne key_5
+							bne key_S
 							lda #8
 							eor WALLMASK1
 							sta WALLMASK1						
 							lda #$34
 							sta SCREEN+$65
 							jsr initCanvas
+key_S					lda KEYCOLS
+							and #32
+							bne key_5
+							inc py							
+							lda #$13
+							sta SCREEN+$65
+							jsr initCanvas							
 key_5					lda #KEYROW_3
 							sta KEYROWS
 							lda KEYCOLS
 							and #1
-							bne key_6
+							bne key_D
 							lda #16
 							eor WALLMASK1
 							sta WALLMASK1						
 							lda #$35
 							sta SCREEN+$65
 							jsr initCanvas
+key_D					lda KEYCOLS
+							and #4
+							bne key_6
+							inc px
+							
+							lda pd	; rotate player right
+							lsr
+							ror pd
+							
+							lda #$04
+							sta SCREEN+$65
+							jsr initCanvas								
 key_6					lda KEYCOLS
 							and #8
 							bne key_7
@@ -206,13 +240,68 @@ key_9					lda #KEYROW_5
 							jsr initCanvas									
 key_0					lda KEYCOLS
 							and #8
-							bne gameloopEnd		
+							bne printdebugs		
 							lda #0
 							sta WALLMASK1
 							sta WALLMASK2
 							lda #$30
 							sta SCREEN+$65														
-							jsr initCanvas									
+							jsr initCanvas
+							
+
+							
+printdebugs		jsr clearValues					
+							
+							lda py					   ; player y debug
+							sta value
+							jsr printdec
+							lda resultstr							
+							sta SCREEN+$6a
+							lda resultstr+1
+							sta SCREEN+$69
+							lda resultstr+2
+							sta SCREEN+$68
+							lda #$19
+							sta SCREEN+$67
+							
+							jsr clearValues
+							
+							lda px						; player x debug
+							sta value
+							jsr printdec
+							lda resultstr							
+							sta SCREEN+$6f
+							lda resultstr+1
+							sta SCREEN+$6e
+							lda resultstr+2
+							sta SCREEN+$6d
+							lda #$18
+							sta SCREEN+$6c
+						
+							jsr clearValues
+							
+							lda pd						; player x debug
+							sta value
+							jsr printdec
+							lda resultstr							
+							sta SCREEN+$74
+							lda resultstr+1
+							sta SCREEN+$73
+							lda resultstr+2
+							sta SCREEN+$72
+							lda #$04
+							sta SCREEN+$71		
+							
+							; little hack to get player on map for now
+							; we should rewrite the kernal routinges
+							
+							clc
+							ldy px
+							ldx py
+							jsr PLOT
+							lda #$da
+							jsr PRINT
+							
 gameloopEnd		jmp gameloop							
 						
 
@@ -222,11 +311,11 @@ gameloopEnd		jmp gameloop
 
 ceilingColor	!byte	COLOR_DARKGREY
 floorColor		!byte COLOR_BLUE
-px						!byte 0,0
-py						!byte 0,0
+px						!byte 5,0,0,0				; player x coordinate
+py						!byte 5,0,0,0				; player y coordinate
+pd						!byte %10001000		; player direction
+pIco					!byte	$5a			; which icon to use for the player on map
 
-
-						
 
 !zone subRoutines
 ; #  sub routines here
@@ -235,16 +324,9 @@ py						!byte 0,0
 ; rotating and moving
 
 ; drawing stuff - TODO fixing and shorten this with indirect addressing
-*=$0A00
-map						!byte W,W,W,W,W,W,W,W
-							!byte W,S,W,S,S,S,S,W
-							!byte W,S,S,S,S,S,S,W
-							!byte W,S,S,S,S,S,S,W
-							!byte W,S,S,S,S,S,S,W
-							!byte W,S,S,S,S,W,S,W
-							!byte W,S,S,S,S,W,S,W
-							!byte W,W,W,W,W,W,W,W
-							
+
+
+							; TODO refactor this for general data print routine
 drawMap				lda #<map						; get low byte of the map
 							sta LOB_DATA				; store in zpage
 							lda #>map						; same for
@@ -252,14 +334,13 @@ drawMap				lda #<map						; get low byte of the map
 							lda #<MAPPOS				; get low byte of the mappos (screen ram w/ offset)
 							sta LOB_SCREEN			; store in zpage
 							lda #>MAPPOS				; same for...
-							sta HIB_SCREEN			; highbyte
-							
+							sta HIB_SCREEN			; highbyte							
 							ldx #0							; x = 0 for our row number
 dm1						ldy #MAPWIDTH-1			; y = mapwidth-1 is the last byte of a map data row
 - 						lda (LOB_DATA),y		; store the data indirect addressed with y
 						  sta (LOB_SCREEN),y  ; in the screen position
 							dey									; decrement y
-							bpl -								; is y still positive branc to -
+							bpl -								; is y still positive branc to -							
 							
 							lda LOB_SCREEN			; were done with the row and load the low byte of the screen
 							clc									; clear the carry
@@ -268,19 +349,26 @@ dm1						ldy #MAPWIDTH-1			; y = mapwidth-1 is the last byte of a map data row
 							lda HIB_SCREEN      ; carry is not clear
  							adc #0              ; we add it to the high byte of the screen
  							sta HIB_SCREEN      ; and store it
+							
 							lda LOB_DATA
+							clc
 							adc #MAPWIDTH				; next 8 bytes of the data. TODO make this variable for the data width
 							sta LOB_DATA
+							lda HIB_DATA      ; carry is not clear
+ 							adc #0
+							sta HIB_DATA
 							inx
 							cpx #MAPHIGHT
 							bne dm1
-							
 							rts
-							
+
+getMapTile		; TODO we need a routine to check the map tile for collision detection etc.
+drawPlayerIco	; TODO routine to draw the char at the px py											
 
 initCanvas		jsr drawHorizon
 							jsr drawCeiling
 							jsr drawFloor
+							jsr drawMap	
 							lda WALLMASK1
 							sta WALLMASKT
 							lsr WALLMASKT
@@ -367,7 +455,7 @@ drawWall3			ldx #5
 							pla
 							dex
 							bpl -
-							rts			
+							rts
 							
 drawWall4			lda #$a0
 							ldx #3
@@ -972,8 +1060,74 @@ drawFloor			ldx #17
 						
 clearScreen		lda #147
 							jsr PRINT
-							rts						
+							rts
+					
+clearValues		lda #$30
+							sta resultstr
+							sta resultstr+1
+							sta resultstr+2
+							sta result
+							lda #0
+							sta value
+							sta value+1
+							sta value+2
+							sta result
+							sta result+1
+							sta result+2
+							rts							
+							
+printdec			jsr hex2dec
+        			ldx #9
+l1      			lda result,x
+        			bne l2
+        			dex             ; skip leading zeros
+        			bne l1
+l2      			lda result,x
+        			ora #$30							
+							; insert other print routine here
+        			sta resultstr,x										
+        			dex
+        			bpl l2
+        			rts
+        		  ; converts 10 digits (32 bit values have max. 10 decimal digits)
+hex2dec       ldx #0
+l3      		  jsr div10
+        		  sta result,x
+        		  inx
+        		  cpx #10
+        		  bne l3
+        		  rts
+       			  ; divides a 32 bit value by 10
+       			  ; remainder is returned in akku
+div10         ldy #32         ; 32 bits
+           	  lda #0
+           	  clc
+l4         	  rol
+           	  cmp #10
+           	  bcc skip
+           	  sbc #10
+skip       	  rol value
+           	  rol value+1
+           	  rol value+2
+           	  rol value+3
+           	  dey
+           	  bpl l4
+           	  rts				
+
+value   		!byte 0,0,0,0
+result  		!byte 0,0,0,0,0,0,0,0,0,0
+resultstr		!text "00000000"			
+						
 ; we include external subroutes
 !source "..\_includes\wait.asm"	
 
 !zone data
+map						!byte W,W,W,W,W,W,W,W
+							!byte W,S,W,S,S,S,S,W
+							!byte W,S,S,S,S,S,S,W
+							!byte W,S,S,S,S,S,S,W
+							!byte W,S,S,S,S,S,S,W
+							!byte W,S,S,S,S,W,S,W
+							!byte W,S,S,S,S,W,S,W
+							!byte W,W,W,W,W,W,W,W
+

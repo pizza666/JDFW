@@ -1,6 +1,6 @@
 *=$0801
  !byte $0e, $08, $0A, $00, $9E, $20, $28, $32, $30, $36, $34, $29, $00, $00
- 
+
 *=$0810
         ; prints a 32 bit value to the screen
 printdec
@@ -50,9 +50,7 @@ skip    rol value
         rol value+3
         dey
         bpl l4
-        rts
-				
+        rts				
 
 value   !byte 255,255,0,0
-
 result  !byte 0,0,0,0,0,0,0,0,0,0
