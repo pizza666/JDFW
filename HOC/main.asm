@@ -281,7 +281,7 @@ dm1						ldy #MAPWIDTH-1			; y = mapwidth-1 is the last byte of a map data row
 initCanvas		jsr drawHorizon
 							jsr drawCeiling
 							jsr drawFloor
-drawCanvas		lda WALLMASK1
+							lda WALLMASK1
 							sta WALLMASKT
 							lsr WALLMASKT
 							bcc +
@@ -372,7 +372,7 @@ drawWall3			ldx #5
 drawWall4			lda #$a0
 							ldx #3
 							ldy #COLOR_LIGHTGREY
-dW4L					sta SCREEN+$00c9,x
+-							sta SCREEN+$00c9,x
 							sta SCREEN+$00c9+40,x
 							sta SCREEN+$00c9+80,x
 							sta SCREEN+$00c9+120,x
@@ -390,11 +390,11 @@ dW4L					sta SCREEN+$00c9,x
 							sta SCREENCOLOR+$00c9+240,x
 							pla
 							dex
-							bpl dW4L							
+							bpl -							
 							lda #$a0
 							ldx #1
 							ldy #COLOR_GREY
-dW4L2					sta SCREEN+$00c9+4+40,x		;  []
+-							sta SCREEN+$00c9+4+40,x		;  []
 							sta SCREEN+$00c9+4+80,x
 							sta SCREEN+$00c9+4+120,x
 							sta SCREEN+$00c9+4+160,x
@@ -408,7 +408,7 @@ dW4L2					sta SCREEN+$00c9+4+40,x		;  []
 							sta SCREENCOLOR+$00c9+4+200,x
 							pla
 							dex
-							bpl dW4L2							
+							bpl -							
 							lda #$df
 							sta SCREEN+$00c9+4				; \
 							sta SCREEN+$00c9+4+41			;  \							
@@ -624,7 +624,7 @@ drawWall7			lda #$a0
 							sta SCREEN+$0051+81
 							sta SCREEN+$0051+82
 							ldx#3
-dW7L					lda #$a0
+-							lda #$a0
 							sta SCREEN+$0051+120,x
 							sta SCREEN+$0051+160,x
 							sta SCREEN+$0051+200,x
@@ -633,7 +633,7 @@ dW7L					lda #$a0
 							sta SCREEN+$0051+320,x
 							sta SCREEN+$0051+360,x
 							dex
-							bpl dW7L
+							bpl -
 							sta SCREEN+$0051+400
 							sta SCREEN+$0051+401
 							sta SCREEN+$0051+402		
@@ -704,7 +704,7 @@ drawWall8			lda #$a0
 							sta SCREEN+$0062+479
 							sta SCREEN+$0062+480
 							ldx#3
-dW8L					lda #$a0
+-							lda #$a0
 							sta SCREEN+$005f+120,x
 							sta SCREEN+$005f+160,x
 							sta SCREEN+$005f+200,x
@@ -713,7 +713,7 @@ dW8L					lda #$a0
 							sta SCREEN+$005f+320,x
 							sta SCREEN+$005f+360,x
 							dex
-							bpl dW8L					
+							bpl -					
 							lda #$e9
 							sta SCREEN+$005f+2
 							sta SCREEN+$005f+41
@@ -766,9 +766,8 @@ dW8L					lda #$a0
 drawHorizon		ldx #17
 							lda #$e6
 							ldy #COLOR_DARKGREY
-							jmp drawHorizonL																				
-; a=character y=color x=position							
-drawHorizonL	sta SCREEN+$0119,x
+							;jmp drawHorizonL																											
+-							sta SCREEN+$0119,x
 							sta SCREEN+$0119+40,x
 							sta SCREEN+$0119+80,x
 							pha
@@ -778,11 +777,11 @@ drawHorizonL	sta SCREEN+$0119,x
 							sta SCREENCOLOR+$0119+80,x
 							pla
 							dex
-							bpl drawHorizonL
+							bpl -
 							rts							
 							
 drawBordesH		ldx #39											
-drawBorderHL	lda #$c3
+-							lda #$c3
 							sta SCREEN,x					; 1st border
 							sta SCREEN+640,x 			; mid border
 							sta SCREEN+960,x			; last border
@@ -791,7 +790,7 @@ drawBorderHL	lda #$c3
 							sta SCREENCOLOR+640,x
 							sta SCREENCOLOR+960,x										
 							dex
-							bpl drawBorderHL				; stay positve :)
+							bpl -				; stay positve :)
 							rts							
 							
 drawBorderV		lda #$c2
@@ -857,7 +856,7 @@ drawBorderV		lda #$c2
 							sta SCREEN+840+39
 							sta SCREEN+880+39
 							sta SCREEN+920+39							
-borderColorV	lda #COLOR_BROWN
+							lda #COLOR_BROWN
 							;left
 							sta SCREENCOLOR+40							
 							sta SCREENCOLOR+80
@@ -934,7 +933,7 @@ drawDiamonds	lda	#$da
 							rts
 							
 drawCeiling		ldx #17
-drawCeilingL	lda #$7e
+-							lda #$7e
 							sta SCREEN+$0029,x
 							sta SCREEN+$0029+40,x
 							sta SCREEN+$0029+80,x
@@ -949,11 +948,11 @@ drawCeilingL	lda #$7e
 							sta SCREENCOLOR+$0029+160,x
 							sta SCREENCOLOR+$0029+200,x	
 							dex
-							bpl drawCeilingL
+							bpl -
 							rts
 							
 drawFloor			ldx #17
-drawFloorL		lda #$ff
+-							lda #$ff
 							sta SCREEN+$0191,x
 							sta SCREEN+$0191+40,x
 							sta SCREEN+$0191+80,x
@@ -968,7 +967,7 @@ drawFloorL		lda #$ff
 							sta SCREENCOLOR+$0191+160,x
 							sta SCREENCOLOR+$0191+200,x
 							dex
-							bpl drawFloorL
+							bpl -
 							rts
 						
 clearScreen		lda #147
