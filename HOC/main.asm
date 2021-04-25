@@ -16,10 +16,12 @@ LOB_DATA				= $40		; we use this for data addressing
 HIB_DATA				= $41
 LOB_SCREEN			= $fb 	; this for screen positioning
 HIB_SCREEN			= $fc
+CHARDATA_W			= $a7
+CHARDATA_H			= $a8
+		
 
 ; map const
-MAPWIDTH				= 8
-MAPHIGHT				= 8		
+
 W							  = $d6		;normal wall
 S								= $20		;normal floor/sky		
 MAPPOS 					= SCREEN+$b6
@@ -326,17 +328,28 @@ pIco					!byte	$5a			; which icon to use for the player on map
 ; drawing stuff - TODO fixing and shorten this with indirect addressing
 
 
-							; TODO refactor this for general data print routine
-drawMap				lda #<map						; get low byte of the map
+drawMap				lda #8
+							sta CHARDATA_W
+							sta CHARDATA_H
+							lda #<map						; get low byte of the map
 							sta LOB_DATA				; store in zpage
 							lda #>map						; same for
 							sta HIB_DATA				; highbyte
 							lda #<MAPPOS				; get low byte of the mappos (screen ram w/ offset)
 							sta LOB_SCREEN			; store in zpage
 							lda #>MAPPOS				; same for...
-							sta HIB_SCREEN			; highbyte							
-							ldx #0							; x = 0 for our row number
-dm1						ldy #MAPWIDTH-1			; y = mapwidth-1 is the last byte of a map data row
+							sta HIB_SCREEN
+							jsr drawChars
+							rts
+
+							; TODO refactor this for general data print routine
+			
+							
+							
+
+drawChars			ldx #0							; x = 0 for our row number
+							dec CHARDATA_W
+--						ldy CHARDATA_W			; y = mapwidth-1 is the last byte of a map data row
 - 						lda (LOB_DATA),y		; store the data indirect addressed with y
 						  sta (LOB_SCREEN),y  ; in the screen position
 							dey									; decrement y
@@ -352,15 +365,16 @@ dm1						ldy #MAPWIDTH-1			; y = mapwidth-1 is the last byte of a map data row
 							
 							lda LOB_DATA
 							clc
-							adc #MAPWIDTH				; next 8 bytes of the data. TODO make this variable for the data width
+							adc CHARDATA_W				; next 8 bytes of the data. TODO make this variable for the data width
 							sta LOB_DATA
+							inc LOB_DATA
 							lda HIB_DATA      ; carry is not clear
  							adc #0
 							sta HIB_DATA
 							inx
-							cpx #MAPHIGHT
-							bne dm1
-							rts
+							cpx CHARDATA_H
+							bne --
+							rts						
 
 getMapTile		; TODO we need a routine to check the map tile for collision detection etc.
 drawPlayerIco	; TODO routine to draw the char at the px py											
@@ -1129,4 +1143,4 @@ map						!byte W,W,W,W,W,W,W,W
 							!byte W,S,S,S,S,W,S,W
 							!byte W,S,S,S,S,W,S,W
 							!byte W,W,W,W,W,W,W,W
-
+wall1					!byte $df,$a0,$a0,$a0,$a0,$a0,$a0,$a0,$a0,$a0,$a0,$a0,$a0,$69							
