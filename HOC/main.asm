@@ -81,7 +81,7 @@ KEYROW_8				= %01111111 ; (127/$7f)     | STOP  ($  )|   q   ($11)|COMMODR($  )|
 							lda #%00000000
 							sta WALLMASK1
 							;			-----BA9
-							lda #%00000110
+							lda #%00000000
 							sta WALLMASK2
 							; load inital walls (for testing)
 
@@ -251,7 +251,7 @@ key_0					lda KEYCOLS
 
 							
 printdebugs		jsr clearValues					
-							
+							jsr initCanvas
 							lda py					   ; player y debug
 							sta value
 							jsr printdec
@@ -368,7 +368,6 @@ drawPlayerIco	; TODO routine to draw the char at the px py
 initCanvas		jsr drawHorizon
 							jsr drawCeiling
 							jsr drawFloor
-							jsr drawMap	
 							lda WALLMASK1
 							sta WALLMASKT
 							lsr WALLMASKT
