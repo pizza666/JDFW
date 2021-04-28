@@ -59,6 +59,7 @@ VIC_SPRITEACTIVE    = $d015         ;(21) Bestimmt welche Sprites sichtbar sind
                                     ;        Bit-Nr. = Sprite-Nr.
 VIC_SPRITEDOUBLEHEIGHT=$d017        ;(23) Doppelte Höhe der Sprites
                                     ;        Bit-Nr. = Sprite-Nr.
+VIC_MEMSETUP				= $d018					; memory setup register für character und screen mem																	
 VIC_IRQSTATUS       = $d019         ;(25) aktuell aufgetretene Interrupts vom VIC-II
                                     ;     lesen: 1 = IRQ aufgetreten
                                     ;     BIT   7: IRQ aufgetreten, welcher es

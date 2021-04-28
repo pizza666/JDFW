@@ -32,6 +32,10 @@ NORTH						= %10001000 ; $88 - 136
 EAST						= %01000100 ; $44 - 68
 SOUTH						= %00100010 ; $22 - 34
 WEST						= %00010001 ; $11 - 17
+ICON_NORTH			= 28
+ICON_EAST				= 29
+ICON_SOUTH			= 30
+ICON_WEST				= 31
 
 ; keyboard
 KEYROWS 				=	$dc00			; peek
@@ -63,6 +67,10 @@ KEYROW_8				= %01111111 ; (127/$7f)     | STOP  ($  )|   q   ($11)|COMMODR($  )|
 							;lda #16
 							;ora $d016
 							;sta $d016
+							
+							; use charset $2000
+							lda #$18		
+							sta VIC_MEMSETUP
 							
 							;
 							lda #09
@@ -331,7 +339,7 @@ floorColor		!byte COLOR_BLUE
 px						!byte 2,0,0,0				; player x coordinate
 py						!byte 2,0,0,0				; player y coordinate
 pd						!byte %10001000		; player direction
-pIco					!byte	$5a			; which icon to use for the player on map
+pIco					!byte	ICON_NORTH			; which icon to use for the player on map
 
 
 !zone subRoutines
@@ -1275,4 +1283,5 @@ map						!byte W,W,W,W,W,W,W,W
 							!byte W,S,S,S,S,W,S,W
 							!byte W,S,S,S,S,W,S,W
 							!byte W,W,W,W,W,W,W,W
-	
+*=$2000
+!media 	"dungeon.charsetproject",char
