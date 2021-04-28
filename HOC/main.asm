@@ -99,6 +99,8 @@ KEYROW_8				= %01111111 ; (127/$7f)     | STOP  ($  )|   q   ($11)|COMMODR($  )|
 							; load inital walls (for testing)
 
 							; draw the initial canvase
+							jsr getWalls
+							jsr setWalls
 							jsr initCanvas
 																							
 							; start the game loop
@@ -138,7 +140,11 @@ key_Q					lda KEYCOLS
 							asl
 							rol pd
 							jsr setDirection
-							jsr drawPlayer													
+							jsr getWalls
+							jsr setWalls
+							jsr initCanvas
+							jsr drawMap
+							jsr drawPlayer											
 key_3					lda #KEYROW_2				; #2
 							sta KEYROWS
 							lda KEYCOLS
@@ -155,8 +161,10 @@ key_W					lda KEYCOLS
 							bne key_A
 							lda #$17
 							sta SCREEN+$65
-							jsr initCanvas
 							jsr movePlayerF
+							jsr getWalls
+							jsr setWalls
+							jsr initCanvas
 							jsr drawMap
 							jsr drawPlayer								
 key_A					lda KEYCOLS
@@ -193,7 +201,11 @@ key_E					lda KEYCOLS
 							lsr
 							ror pd
 							jsr setDirection
-							jsr drawPlayer
+							jsr getWalls
+							jsr setWalls
+							jsr initCanvas
+							jsr drawMap
+							jsr drawPlayer			
 key_5					lda #KEYROW_3			; # 3
 							sta KEYROWS
 							lda KEYCOLS
@@ -339,7 +351,7 @@ gameloopEnd		jmp gameloop
 
 ceilingColor	!byte	COLOR_DARKGREY
 floorColor		!byte COLOR_BLUE
-px						!byte 2,0,0,0				; player x coordinate
+px						!byte 1,0,0,0				; player x coordinate
 py						!byte 2,0,0,0				; player y coordinate
 pd						!byte %10001000		; player direction
 pIco					!byte	ICON_NORTH			; which icon to use for the player on map
@@ -352,7 +364,6 @@ pIco					!byte	ICON_NORTH			; which icon to use for the player on map
 ; rotating and moving
 
 ; drawing stuff - TODO fixing and shorten this with indirect addressing
-
 
 drawMap				lda #MAPWIDTH
 							sta CHARDATA_W
@@ -369,6 +380,133 @@ drawMap				lda #MAPWIDTH
 							jsr drawChars
 							jsr drawPlayer
 							rts
+							
+getWalls			lda #<map						; get low byte of the map
+							sta LOB_DATA				; store in zpage
+							lda #>map						; same for
+							sta HIB_DATA				; highbyte
+						  ldy py
+							dey
+-							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA
+							dey							
+							bpl -
+							
+							ldy px						; load the player x
+							lda (LOB_DATA),y
+							sta northWall1
+							
+							ldy px				; load the player x
+							iny						; this gives us the field to the north east of the player
+							lda (LOB_DATA),y
+							sta eastWall2
+							
+							ldy px				; load the player x
+							dey						; this gives us the field to the north west of the player
+							lda (LOB_DATA),y
+							sta westWall2
+							
+							; last row (the row where the player is in)
+							; so add one more mapwidth to the data
+							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA
+							
+							ldy px				; load the player x
+							iny						; this gives us the field to the east of the player
+							lda (LOB_DATA),y
+							sta eastWall1
+							
+							ldy px				; load the player x
+							dey						; this gives us the field to the west of the player
+							lda (LOB_DATA),y
+							sta westWall1
+							
+				      rts	
+					
+eastWall1  !byte 0
+westWall1	 !byte 0		
+northWall1 !byte 0
+
+eastWall2	 !byte 0
+westWall2	 !byte 0
+
+setWalls			lda #0					; first we clear all walls
+							sta WALLMASK1
+							sta WALLMASK2
+
+							lda eastWall1		; #1 east wall east to ppos
+							cmp #W
+							bne ++
+							lda pd
+							cmp #NORTH
+							bne +
+							lda #4
++							cmp #SOUTH
+							bne +
+							lda #2
++							cmp #EAST
+							bne +
+							lda #1						
++							ora WALLMASK2
+							sta WALLMASK2
+							
+++						lda westWall1		; #1 west wall east to ppos
+							cmp #W
+							bne ++
+							lda pd
+							cmp #NORTH
+							bne +
+							lda #2
++							cmp #SOUTH
+							bne +
+							lda #4
++							cmp #WEST
+							bne +
+							lda #1
++							ora WALLMASK2
+							sta WALLMASK2
+							
+++					  lda northWall1		; #1 north wall east to ppos
+							cmp #W
+							bne ++
+							lda pd
+							cmp #NORTH
+							bne +
+							lda #1
++							cmp #EAST
+							bne +
+							lda #2
++							cmp #WEST
+							bne ++
+							lda #4
++							ora WALLMASK2
+							sta WALLMASK2
+
+++						lda eastWall2		; #1 east wall east to ppos
+							cmp #W
+							bne ++
+							lda pd
+							cmp #NORTH
+							bne +
+							lda #128
++							cmp #EAST
+							bne ++
+							lda #64
++							ora WALLMASK1
+							sta WALLMASK1
+++							
++++						rts
+	
 							
 setDirection	lda pd
 							cmp #NORTH
@@ -390,7 +528,7 @@ setDirection	lda pd
 +							rts
 
 
-movePlayerF		lda pd							; move player forward in pd (player direction)
+movePlayerF		lda pd							; move player forward in pd (player direction) TODO maybe cycle optimization needed
 							cmp #NORTH
 							bne +
 							jsr movePlayerN
@@ -404,12 +542,12 @@ movePlayerF		lda pd							; move player forward in pd (player direction)
 							bne +
 							jsr movePlayerW
 +							rts
+
 							
 movePlayerE		lda #<map						; get low byte of the map
 							sta LOB_DATA				; store in zpage
 							lda #>map						; same for
 							sta HIB_DATA				; highbyte
-							
 							ldy py
 -							lda LOB_DATA
 							clc
@@ -419,8 +557,7 @@ movePlayerE		lda #<map						; get low byte of the map
 							adc #0
 							sta HIB_DATA
 							dey
-							bpl -
-														
+							bpl -						
 							ldy px
 							iny
 							lda (LOB_DATA),y
@@ -433,7 +570,6 @@ movePlayerW		lda #<map						; get low byte of the map
 							sta LOB_DATA				; store in zpage
 							lda #>map						; same for
 							sta HIB_DATA				; highbyte
-							
 							ldy py
 -							lda LOB_DATA
 							clc
@@ -443,8 +579,7 @@ movePlayerW		lda #<map						; get low byte of the map
 							adc #0
 							sta HIB_DATA
 							dey
-							bpl -
-														
+							bpl -					
 							ldy px
 							dey
 							lda (LOB_DATA),y
@@ -457,9 +592,8 @@ movePlayerN		lda #<map						; get low byte of the map
 							sta LOB_DATA				; store in zpage
 							lda #>map						; same for
 							sta HIB_DATA				; highbyte
-							
 							ldy py
-							dey
+							;dey
 -							lda LOB_DATA
 							clc
 							adc #MAPWIDTH
@@ -468,8 +602,7 @@ movePlayerN		lda #<map						; get low byte of the map
 							adc #0
 							sta HIB_DATA
 							dey
-							bpl -
-														
+							bne -					
 							ldy px
 							lda (LOB_DATA),y
 							cmp #W
@@ -477,11 +610,11 @@ movePlayerN		lda #<map						; get low byte of the map
 							dec py
 +							rts
 
+
 movePlayerS		lda #<map						; get low byte of the map
 							sta LOB_DATA				; store in zpage
 							lda #>map						; same for
 							sta HIB_DATA				; highbyte
-							
 							ldy py
 							iny
 -							lda LOB_DATA
@@ -492,17 +625,14 @@ movePlayerS		lda #<map						; get low byte of the map
 							adc #0
 							sta HIB_DATA
 							dey
-							bpl -
-														
+							bpl -					
 							ldy px
 							lda (LOB_DATA),y
 							cmp #W
 							beq +
 							inc py
 +							rts							
-							
-							
-									
+															
 drawPlayer		lda #<MAPPOS				; we set our position back to the actuial map position
 							sta LOB_SCREEN			;
 							lda #>MAPPOS				;
@@ -517,12 +647,11 @@ drawPlayer		lda #<MAPPOS				; we set our position back to the actuial map positi
  							adc #0              ; we add it to the high byte of the screen
  							sta HIB_SCREEN      ; and store it
 							dey
-							bpl -								; at the end we should havethe y position in first row
-
+							bpl -								; at the end we should have the y position in first row
 							ldy px							; now we load x	
 							lda pIco						; player icon
 							sta (LOB_SCREEN),y
-							rts			
+							rts
 
 drawChars			ldx #0							; x = 0 for our row number
 							dec CHARDATA_W
@@ -542,19 +671,16 @@ drawChars			ldx #0							; x = 0 for our row number
 							
 							lda LOB_DATA
 							clc
-							adc CHARDATA_W				; next 8 bytes of the data. TODO make this variable for the data width
+							adc CHARDATA_W			; next row
 							sta LOB_DATA
 							inc LOB_DATA
-							lda HIB_DATA      ; carry is not clear
+							lda HIB_DATA        ; carry is not clear
  							adc #0
 							sta HIB_DATA
 							inx
 							cpx CHARDATA_H
 							bne --
 							rts						
-
-getMapTile		; TODO we need a routine to check the map tile for collision detection etc.
-drawPlayerIco	; TODO routine to draw the char at the px py											
 
 initCanvas		jsr drawHorizon
 							jsr drawCeiling
@@ -596,9 +722,9 @@ initCanvas		jsr drawHorizon
 +							lsr WALLMASKT
 							bcc +
 							jsr drawWallB							
-+							rts
-							
++							rts					
 
+!zone drawCanvas						; single routines for drawing walls, floor and ceiling
 drawWall1			ldx #5		
 							lda #$a0
 							ldy #COLOR_DARKGREY
@@ -1056,8 +1182,47 @@ drawHorizon		ldx #17
 							pla
 							dex
 							bpl -
-							rts							
+							rts	
+drawCeiling		ldx #17
+-							lda #$7e
+							sta SCREEN+$0029,x
+							sta SCREEN+$0029+40,x
+							sta SCREEN+$0029+80,x
+							sta SCREEN+$0029+120,x
+							sta SCREEN+$0029+160,x
+							sta SCREEN+$0029+200,x	
+							lda ceilingColor
+							sta SCREENCOLOR+$0029,x
+							sta SCREENCOLOR+$0029+40,x
+							sta SCREENCOLOR+$0029+80,x
+							sta SCREENCOLOR+$0029+120,x
+							sta SCREENCOLOR+$0029+160,x
+							sta SCREENCOLOR+$0029+200,x	
+							dex
+							bpl -
+							rts
 							
+drawFloor			ldx #17
+-							lda #$ff
+							sta SCREEN+$0191,x
+							sta SCREEN+$0191+40,x
+							sta SCREEN+$0191+80,x
+							sta SCREEN+$0191+120,x
+							sta SCREEN+$0191+160,x
+							sta SCREEN+$0191+200,x
+							lda floorColor
+							sta SCREENCOLOR+$0191,x
+							sta SCREENCOLOR+$0191+40,x
+							sta SCREENCOLOR+$0191+80,x
+							sta SCREENCOLOR+$0191+120,x
+							sta SCREENCOLOR+$0191+160,x
+							sta SCREENCOLOR+$0191+200,x
+							dex
+							bpl -
+							rts	
+							
+
+!zone drawUI							
 drawBordesH		ldx #39											
 -							lda #$c3
 							sta SCREEN,x					; 1st border
@@ -1208,45 +1373,8 @@ drawDiamonds	lda	#$da
 							sta SCREEN+679	
 							sta SCREEN+$03c0
 							sta SCREEN+$03e7
-							rts
-							
-drawCeiling		ldx #17
--							lda #$7e
-							sta SCREEN+$0029,x
-							sta SCREEN+$0029+40,x
-							sta SCREEN+$0029+80,x
-							sta SCREEN+$0029+120,x
-							sta SCREEN+$0029+160,x
-							sta SCREEN+$0029+200,x	
-							lda ceilingColor
-							sta SCREENCOLOR+$0029,x
-							sta SCREENCOLOR+$0029+40,x
-							sta SCREENCOLOR+$0029+80,x
-							sta SCREENCOLOR+$0029+120,x
-							sta SCREENCOLOR+$0029+160,x
-							sta SCREENCOLOR+$0029+200,x	
-							dex
-							bpl -
-							rts
-							
-drawFloor			ldx #17
--							lda #$ff
-							sta SCREEN+$0191,x
-							sta SCREEN+$0191+40,x
-							sta SCREEN+$0191+80,x
-							sta SCREEN+$0191+120,x
-							sta SCREEN+$0191+160,x
-							sta SCREEN+$0191+200,x
-							lda floorColor
-							sta SCREENCOLOR+$0191,x
-							sta SCREENCOLOR+$0191+40,x
-							sta SCREENCOLOR+$0191+80,x
-							sta SCREENCOLOR+$0191+120,x
-							sta SCREENCOLOR+$0191+160,x
-							sta SCREENCOLOR+$0191+200,x
-							dex
-							bpl -
-							rts
+							rts							
+						
 !zone clearingRoutines						
 clearScreen		lda #147
 							jsr PRINT
@@ -1313,13 +1441,13 @@ resultstr		!text "00000000"
 !source "..\_includes\wait.asm"	
 
 !zone data
-map						!byte W,W,W,W,W,W,W,W
+map						!byte W,W,W,S,W,W,S,W
 							!byte W,S,W,S,S,S,S,W
+							!byte W,S,W,S,S,S,S,W
+							!byte W,S,S,S,S,S,S,S
+							!byte W,S,S,S,S,S,S,S
+							!byte W,S,S,S,S,W,S,S
+							!byte W,S,S,S,S,W,S,S
 							!byte W,S,S,S,S,S,S,W
-							!byte W,S,S,S,S,S,S,W
-							!byte W,S,S,S,S,S,S,W
-							!byte W,S,S,S,S,W,S,W
-							!byte W,S,S,S,S,W,S,W
-							!byte W,W,W,W,W,W,W,W
 *=$2000
 !media 	"dungeon.charsetproject",char
