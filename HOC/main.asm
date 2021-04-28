@@ -111,7 +111,7 @@ waitraster		lda VIC_RASTERROWPOS
 
 							; TODO refactor the key loop with lsr maybe							
 							
-							lda #KEYROW_8
+							lda #KEYROW_8				; #8
 key_1					sta KEYROWS
 							lda KEYCOLS
 							and #1
@@ -124,14 +124,22 @@ key_1					sta KEYROWS
 							jsr initCanvas												
 key_2					lda KEYCOLS
 							and #8
-							bne key_3
+							bne key_Q
 							lda #2
 							eor WALLMASK1
 							sta WALLMASK1						
 							lda #$32
 							sta SCREEN+$65
 							jsr initCanvas
-key_3					lda #KEYROW_2
+key_Q					lda KEYCOLS
+							and #64			
+							bne key_3
+							lda pd		; rotate player left
+							asl
+							rol pd
+							jsr setDirection
+							jsr drawPlayer													
+key_3					lda #KEYROW_2				; #2
 							sta KEYROWS
 							lda KEYCOLS
 							and #1
@@ -142,26 +150,18 @@ key_3					lda #KEYROW_2
 							lda #$33
 							sta SCREEN+$65
 							jsr initCanvas	
-key_W					lda #KEYROW_2
-							sta KEYROWS
-							lda KEYCOLS
+key_W					lda KEYCOLS
 							and #2
 							bne key_A
 							lda #$17
 							sta SCREEN+$65
 							jsr initCanvas
-							jsr movePlayerN
+							jsr movePlayerF
 							jsr drawMap
 							jsr drawPlayer								
 key_A					lda KEYCOLS
 							and #4
 							bne key_4
-
-						  lda pd	; rotate player left
-							asl
-							rol pd
-							
-							
 							lda #$01
 							sta SCREEN+$65
 							jsr initCanvas
@@ -179,14 +179,22 @@ key_4					lda KEYCOLS
 							jsr initCanvas
 key_S					lda KEYCOLS
 							and #32
-							bne key_5							
+							bne key_E							
 							lda #$13
 							sta SCREEN+$65
 							jsr initCanvas
 							jsr movePlayerS
 							jsr drawMap
-							jsr drawPlayer				
-key_5					lda #KEYROW_3
+							jsr drawPlayer
+key_E					lda KEYCOLS
+							and #64			
+							bne key_5
+							lda pd	; rotate player right
+							lsr
+							ror pd
+							jsr setDirection
+							jsr drawPlayer
+key_5					lda #KEYROW_3			; # 3
 							sta KEYROWS
 							lda KEYCOLS
 							and #1
@@ -200,11 +208,6 @@ key_5					lda #KEYROW_3
 key_D					lda KEYCOLS
 							and #4
 							bne key_6
-
-							lda pd	; rotate player right
-							lsr
-							ror pd
-							
 							lda #$04
 							sta SCREEN+$65
 							jsr initCanvas
@@ -220,7 +223,7 @@ key_6					lda KEYCOLS
 							lda #$36
 							sta SCREEN+$65
 							jsr initCanvas	
-key_7					lda #KEYROW_4
+key_7					lda #KEYROW_4			; #4
 							sta KEYROWS
 							lda KEYCOLS
 							and #1
@@ -249,7 +252,7 @@ key_B					lda KEYCOLS
 							lda #$02
 							sta SCREEN+$65
 							jsr initCanvas												
-key_9					lda #KEYROW_5
+key_9					lda #KEYROW_5		; #5
 							sta KEYROWS
 							lda KEYCOLS
 							and #1
@@ -366,6 +369,41 @@ drawMap				lda #MAPWIDTH
 							jsr drawChars
 							jsr drawPlayer
 							rts
+							
+setDirection	lda pd
+							cmp #NORTH
+							bne +
+							ldx #ICON_NORTH
+							stx pIco
++							cmp #EAST
+							bne +
+							ldx #ICON_EAST
+							stx pIco
++							cmp #SOUTH
+							bne +
+							ldx #ICON_SOUTH
+							stx pIco
++							cmp #WEST
+							bne +
+							ldx #ICON_WEST
+							stx pIco
++							rts
+
+
+movePlayerF		lda pd							; move player forward in pd (player direction)
+							cmp #NORTH
+							bne +
+							jsr movePlayerN
++							cmp #EAST
+							bne +
+							jsr movePlayerE
++							cmp #SOUTH
+							bne +
+							jsr movePlayerS
++							cmp #WEST
+							bne +
+							jsr movePlayerW
++							rts
 							
 movePlayerE		lda #<map						; get low byte of the map
 							sta LOB_DATA				; store in zpage
