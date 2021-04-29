@@ -76,7 +76,7 @@ KEYROW_8				= %01111111 ; (127/$7f)     | STOP  ($  )|   q   ($11)|COMMODR($  )|
 							lda #09
 						  sta $d022
 							lda #06
-							sta $D023
+							sta $d023
 							
 							jsr clearScreen
 							jsr drawBordesH   ; draw the borders and
@@ -85,11 +85,28 @@ KEYROW_8				= %01111111 ; (127/$7f)     | STOP  ($  )|   q   ($11)|COMMODR($  )|
 							jsr drawMap;
 							
 							;															
-							;			123	  possible map positions											
-							;     465   draw walls in ascending
-						  ;			798	  order to get correct  														
-							;			BxA	  canvas layers		 								
-							;															
+							;			123	         possible map positions											
+							;     465          draw walls in ascending
+						  ;			798	         order to get correct  														
+							;			AxB	         canvas layers		 								
+
+; wall naming for drawing if pd=means north
+W3 = %00000001  ; WALLMASK1
+W2 = %00000100  ; WALLMASK1
+W1 = %01000000  ; WALLMASK1
+W0 = %00000010  ; WALLMASK2
+
+N3 = %00000010  ; WALLMASK1
+N2 = %01000000  ; WALLMASK1
+N1 = %00000001  ; WALLMASK2
+							
+E3 = %00000100  ; WALLMASK1
+E2 = %10010000  ; WALLMASK1
+E1 = %00000000  ; WALLMASK1
+E0 = %00000100	; WALLMASK2
+
+
+		
 							;			87654321														
 							lda #%00000000
 							sta WALLMASK1
@@ -397,6 +414,7 @@ getWalls			lda #<map						; get low byte of the map
 							dey							
 							bpl -
 							
+							; row in front of the player
 							ldy px						; load the player x
 							lda (LOB_DATA),y
 							sta northWall1
@@ -433,12 +451,26 @@ getWalls			lda #<map						; get low byte of the map
 							
 				      rts	
 					
-eastWall1  !byte 0
-westWall1	 !byte 0		
-northWall1 !byte 0
+eastWall1  		!byte 0
+westWall1	 		!byte 0		
+northWall1 		!byte 0
 
-eastWall2	 !byte 0
-westWall2	 !byte 0
+eastWall2	 		!byte 0
+westWall2	 		!byte 0
+
+
+;																													
+;					1 2 3	  possible map positions
+;     		4 6 5   draw walls in ascendin
+;					7 9 8	  order to get correct
+;					B x A	  canvas layers			 					
+;																													
+;			 87654321																				
+;lda #%00000000
+;sta WALLMASK1
+;					-----BA9
+;lda #%00000000
+;sta WALLMASK2
 
 setWalls			lda #0					; first we clear all walls
 							sta WALLMASK1
@@ -450,13 +482,16 @@ setWalls			lda #0					; first we clear all walls
 							lda pd
 							cmp #NORTH
 							bne +
-							lda #4
+							lda #E0
 +							cmp #SOUTH
 							bne +
-							lda #2
+							lda #W0
 +							cmp #EAST
 							bne +
-							lda #1						
+							lda #N1
++							cmp #WEST
+							bne +
+							lda #0						
 +							ora WALLMASK2
 							sta WALLMASK2
 							
@@ -473,6 +508,9 @@ setWalls			lda #0					; first we clear all walls
 +							cmp #WEST
 							bne +
 							lda #1
++							cmp #EAST
+							bne +
+							lda #0
 +							ora WALLMASK2
 							sta WALLMASK2
 							
@@ -487,12 +525,15 @@ setWalls			lda #0					; first we clear all walls
 							bne +
 							lda #2
 +							cmp #WEST
-							bne ++
+							bne +
 							lda #4
++							cmp #SOUTH
+							bne +
+							lda #0						
 +							ora WALLMASK2
 							sta WALLMASK2
 
-++						lda eastWall2		; #1 east wall east to ppos
+++						lda eastWall2			; #2 east wall east to ppos
 							cmp #W
 							bne ++
 							lda pd
@@ -500,12 +541,34 @@ setWalls			lda #0					; first we clear all walls
 							bne +
 							lda #128
 +							cmp #EAST
-							bne ++
+							bne +
 							lda #64
++							cmp #SOUTH
+							bne +
+							lda #0							
 +							ora WALLMASK1
 							sta WALLMASK1
-++							
-+++						rts
+
+++						lda westWall2				; #2 west wall east to ppos
+							cmp #W
+							bne ++
+							lda pd
+							cmp #NORTH
+							bne +
+							lda #64
++							cmp #WEST
+							bne +
+							lda #128							
++							cmp #SOUTH
+							bne +
+							lda #0
++							cmp #EAST
+							bne +
+							lda #0							
++							ora WALLMASK1
+							sta WALLMASK1
+							
+++						rts
 	
 							
 setDirection	lda pd
@@ -527,7 +590,7 @@ setDirection	lda pd
 							stx pIco
 +							rts
 
-
+!zone movePlayer
 movePlayerF		lda pd							; move player forward in pd (player direction) TODO maybe cycle optimization needed
 							cmp #NORTH
 							bne +
@@ -632,7 +695,7 @@ movePlayerS		lda #<map						; get low byte of the map
 							beq +
 							inc py
 +							rts							
-															
+													
 drawPlayer		lda #<MAPPOS				; we set our position back to the actuial map position
 							sta LOB_SCREEN			;
 							lda #>MAPPOS				;
@@ -681,7 +744,7 @@ drawChars			ldx #0							; x = 0 for our row number
 							cpx CHARDATA_H
 							bne --
 							rts						
-
+!zone canvas
 initCanvas		jsr drawHorizon
 							jsr drawCeiling
 							jsr drawFloor
@@ -1445,9 +1508,9 @@ map						!byte W,W,W,S,W,W,S,W
 							!byte W,S,W,S,S,S,S,W
 							!byte W,S,W,S,S,S,S,W
 							!byte W,S,S,S,S,S,S,S
-							!byte W,S,S,S,S,S,S,S
+							!byte W,S,S,W,S,W,S,S
 							!byte W,S,S,S,S,W,S,S
 							!byte W,S,S,S,S,W,S,S
-							!byte W,S,S,S,S,S,S,W
+							!byte W,W,W,W,W,W,W,W
 *=$2000
 !media 	"dungeon.charsetproject",char
