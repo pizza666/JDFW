@@ -177,13 +177,13 @@ key_W					lda KEYCOLS
 							bne key_A
 							lda #$17
 							sta SCREEN+$65
+							jsr movePlayerF
+							jsr setDirection
 							jsr getWalls
 							jsr setWalls
 							jsr initCanvas
-							jsr drawPlayer
-							jsr movePlayerF
-							jsr drawPlayer
-							jsr drawMap							
+							jsr drawMap
+							jsr drawPlayer						
 key_A					lda KEYCOLS
 							and #4
 							bne key_4
@@ -402,8 +402,9 @@ getWalls			lda #<map						; get low byte of the map
 							sta LOB_DATA				; store in zpage
 							lda #>map						; same for
 							sta HIB_DATA				; highbyte
-						  ldy py
-							dey							
+							ldy py
+							dey
+							beq +								; px-1 is 0? skip the row loop							
 -							lda LOB_DATA
 							clc
 							adc #MAPWIDTH
@@ -415,7 +416,7 @@ getWalls			lda #<map						; get low byte of the map
 							bne -
 							
 							; row in front of the player
-							ldy px						; load the player x
++							ldy px						; load the player x
 							lda (LOB_DATA),y
 							sta northWall1
 							
@@ -660,7 +661,7 @@ movePlayerN		lda #<map						; get low byte of the map
 							sta HIB_DATA				; highbyte
 							ldy py
 							dey
-							beq +
+							beq +								; px-1 is 0? skip the row loop
 -							lda LOB_DATA
 							clc
 							adc #MAPWIDTH
@@ -676,7 +677,7 @@ movePlayerN		lda #<map						; get low byte of the map
 							cmp #W
 							beq +
 							dec py
-+								rts
++							rts
 
 
 movePlayerS		lda #<map						; get low byte of the map
