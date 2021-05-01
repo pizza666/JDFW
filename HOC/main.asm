@@ -18,14 +18,13 @@ LOB_SCREEN			= $fb 	; this for screen positioning
 HIB_SCREEN			= $fc
 CHARDATA_W			= $a7
 CHARDATA_H			= $a8
-		
 
 ; map const
 MAPWIDTH				= 8
 MAPHIGHT				= 8
 W							  = $d6		;normal wall
 S								= $20		;normal floor/sky
-MAPOFFSET				= $b6		
+MAPOFFSET				= $b5		
 MAPPOS 					= SCREEN+MAPOFFSET
 MAPCOLOR				= SCREENCOLOR+MAPOFFSET
 NORTH						= %10001000 ; $88 - 136
@@ -178,12 +177,13 @@ key_W					lda KEYCOLS
 							bne key_A
 							lda #$17
 							sta SCREEN+$65
-							jsr movePlayerF
 							jsr getWalls
 							jsr setWalls
 							jsr initCanvas
-							jsr drawMap
-							jsr drawPlayer								
+							jsr drawPlayer
+							jsr movePlayerF
+							jsr drawPlayer
+							jsr drawMap							
 key_A					lda KEYCOLS
 							and #4
 							bne key_4
@@ -347,7 +347,7 @@ printdebugs		jsr clearValues
 							lda resultstr+2
 							sta SCREEN+$72
 							lda #$04
-							sta SCREEN+$71		
+							sta SCREEN+$71									
 							
 							; little hack to get player on map for now
 							; we should rewrite the kernal routinges
@@ -403,7 +403,7 @@ getWalls			lda #<map						; get low byte of the map
 							lda #>map						; same for
 							sta HIB_DATA				; highbyte
 						  ldy py
-							dey
+							dey							
 -							lda LOB_DATA
 							clc
 							adc #MAPWIDTH
@@ -411,8 +411,8 @@ getWalls			lda #<map						; get low byte of the map
 							lda HIB_DATA
 							adc #0
 							sta HIB_DATA
-							dey							
-							bpl -
+							dey
+							bne -
 							
 							; row in front of the player
 							ldy px						; load the player x
@@ -449,6 +449,7 @@ getWalls			lda #<map						; get low byte of the map
 							lda (LOB_DATA),y
 							sta westWall1
 							
+
 				      rts	
 					
 eastWall1  		!byte 0
@@ -612,6 +613,7 @@ movePlayerE		lda #<map						; get low byte of the map
 							lda #>map						; same for
 							sta HIB_DATA				; highbyte
 							ldy py
+							dey
 -							lda LOB_DATA
 							clc
 							adc #MAPWIDTH
@@ -634,6 +636,7 @@ movePlayerW		lda #<map						; get low byte of the map
 							lda #>map						; same for
 							sta HIB_DATA				; highbyte
 							ldy py
+							dey
 -							lda LOB_DATA
 							clc
 							adc #MAPWIDTH
@@ -642,7 +645,7 @@ movePlayerW		lda #<map						; get low byte of the map
 							adc #0
 							sta HIB_DATA
 							dey
-							bpl -					
+							bpl -							
 							ldy px
 							dey
 							lda (LOB_DATA),y
@@ -656,7 +659,8 @@ movePlayerN		lda #<map						; get low byte of the map
 							lda #>map						; same for
 							sta HIB_DATA				; highbyte
 							ldy py
-							;dey
+							dey
+							beq +
 -							lda LOB_DATA
 							clc
 							adc #MAPWIDTH
@@ -665,13 +669,14 @@ movePlayerN		lda #<map						; get low byte of the map
 							adc #0
 							sta HIB_DATA
 							dey
-							bne -					
-							ldy px
+							bne -									
++							ldy px
 							lda (LOB_DATA),y
+							sta SCREEN+$76
 							cmp #W
 							beq +
 							dec py
-+							rts
++								rts
 
 
 movePlayerS		lda #<map						; get low byte of the map
@@ -679,7 +684,7 @@ movePlayerS		lda #<map						; get low byte of the map
 							lda #>map						; same for
 							sta HIB_DATA				; highbyte
 							ldy py
-							iny
+							;iny
 -							lda LOB_DATA
 							clc
 							adc #MAPWIDTH
@@ -710,7 +715,7 @@ drawPlayer		lda #<MAPPOS				; we set our position back to the actuial map positi
  							adc #0              ; we add it to the high byte of the screen
  							sta HIB_SCREEN      ; and store it
 							dey
-							bpl -								; at the end we should have the y position in first row
+							bne -												; at the end we should have the y position in first row
 							ldy px							; now we load x	
 							lda pIco						; player icon
 							sta (LOB_SCREEN),y
@@ -1512,5 +1517,6 @@ map						!byte W,W,W,S,W,W,S,W
 							!byte W,S,S,S,S,W,S,S
 							!byte W,S,S,S,S,W,S,S
 							!byte W,W,W,W,W,W,W,W
+
 *=$2000
 !media 	"dungeon.charsetproject",char
