@@ -11,17 +11,25 @@ WALLMASK1				= $02 				; 1st wallmask register
 WALLMASK2				= $03 ; 2nd wallmask registesr
 WALLMASKT				= $04 ; temporary wallmask
 
-; name our zero pages
-LOB_DATA				= $40		; we use this for data addressing
-HIB_DATA				= $41
-LOB_SCREEN			= $fb 	; this for screen positioning
-HIB_SCREEN			= $fc
-CHARDATA_W			= $a7
-CHARDATA_H			= $a8
+; Zero Pages
+LOB_DATA				= $40		; data lobyte in ZP
+HIB_DATA				= $41   ; data hibyte in ZP
+LOB_SCREEN			= $fb 	; screen/color lobyte in ZP
+HIB_SCREEN			= $fc   ; screen/color hibyte in ZP
+CHARDATA_W			= $a7   ; data width in ZP
+CHARDATA_H			= $a8   ; data hight in ZP
+
+; TODO we could store px py pd here
+
+; ui const
+UIWIDTH					= 40
+UIHIGHT					= 25
+UIPOS						= SCREEN
+UICPOS					= SCREENCOLOR
 
 ; map const
-MAPWIDTH				= 8
-MAPHIGHT				= 8
+MAPWIDTH				= 17
+MAPHIGHT				= 11
 W							  = $d6		;normal wall
 S								= $20		;normal floor/sky
 MAPOFFSET				= $b5		
@@ -41,8 +49,8 @@ W1POS 					= SCREEN+$51
 W1CPOS 					= SCREENCOLOR+$51
 E1POS 					= SCREEN+$5f
 E1CPOS 					= SCREENCOLOR+$5f
-HORIZONPOS			= SCREEN+$119
-HORIZONCPOS			= SCREENCOLOR+$119
+HORIZONPOS			= SCREEN+$29
+HORIZONCPOS			= SCREENCOLOR+$29
 
 ; keyboard
 KEYROWS 				=	$dc00			; peek
@@ -85,10 +93,11 @@ KEYROW_8				= %01111111 ; (127/$7f)     | STOP  ($  )|   q   ($11)|COMMODR($  )|
 							lda #06
 							sta $d023
 							
-							jsr clearScreen
-							jsr drawBordesH   ; draw the borders and
-							jsr drawBorderV   ; decorations
-							jsr drawDiamonds  ;
+							jsr clearScreen							
+							jsr drawUi
+							;jsr drawBordesH   ; draw the borders and
+							;jsr drawBorderV   ; decorations
+							;jsr drawDiamonds  ;
 							jsr drawMap;
 							
 							;															
@@ -164,7 +173,7 @@ key_Q					lda KEYCOLS
 							asl
 							rol pd
 							jsr setDirection
-							jsr getFOV
+							jsr getFov
 							jsr getWalls
 							jsr setWalls
 							jsr initCanvas
@@ -188,7 +197,7 @@ key_W					lda KEYCOLS
 							sta SCREEN+$65
 							jsr movePlayerF
 							jsr setDirection
-							jsr getFOV
+							jsr getFov
 							jsr getWalls
 							jsr setWalls
 							jsr initCanvas
@@ -228,7 +237,7 @@ key_E					lda KEYCOLS
 							lsr
 							ror pd
 							jsr setDirection
-							jsr getFOV
+							jsr getFov
 							jsr getWalls
 							jsr setWalls
 							jsr initCanvas
@@ -418,28 +427,144 @@ e0 !byte 0
 
 pdText !byte
 						
-getFOV				lda pd
+getFov				lda pd
 							cmp #NORTH
-							beq .north
-							cmp #EAST
-							beq .east
-							cmp #SOUTH
-							beq .south
-							cmp #WEST
-							beq .west
-.north				lda #$0e
-							sta pdText
-							rts
+							bne +
+							jsr getFovNorth
++							rts
+														
+getFovNorth		lda #$0e						; player facing north
+							sta pdText					;
+							lda #<map						; 		E3 N3 E3
+							sta LOB_DATA				; 		E2 N2	E2
+							lda #>map						; 		E1 N1	E1
+							sta HIB_DATA				;     E0 PL E0
+							ldy py
+							dey
+							beq +++							; py-1 is 0? were in the first row skip the row loop		
+							dey
+							beq ++								; py-1 is 0? were in the first row skip the row loop		
+							dey
+							beq +			
+-							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA
+							dey
+							bne -
+							; 3 rows in front of the player
++							ldy px						; load the player x
+							lda (LOB_DATA),y
+							sta n3						; N3
+							sta SCREEN+$322
+														
+							ldy px						
+							iny								
+							lda (LOB_DATA),y
+							sta e3						; E3
+							sta SCREEN+$323
+							
+							ldy px						
+							dey								
+							lda (LOB_DATA),y
+							sta w3						; W3
+							sta SCREEN+$321
+							; next row
+							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA
+							; 2 rows in front of the player
+++						ldy px						; load the player x
+							lda (LOB_DATA),y
+							sta n2						; N2
+							sta SCREEN+$322+40
+														
+							ldy px						
+							iny								
+							lda (LOB_DATA),y
+							sta e2						; E2
+							sta SCREEN+$323+40
+							
+							ldy px						
+							dey								
+							lda (LOB_DATA),y
+							sta w2						; W2
+							sta SCREEN+$321+40
+							; next row
+							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA
+							; 1 rows in front of the player
++++ 					ldy px						; load the player x
+							lda (LOB_DATA),y
+							sta n1						; N1
+							sta SCREEN+$322+80
+														
+							ldy px						
+							iny								
+							lda (LOB_DATA),y
+							sta e1						; E1
+							sta SCREEN+$323+80
+							
+							ldy px						
+							dey								
+							lda (LOB_DATA),y
+							sta w1						; W2
+							sta SCREEN+$321+80
+							; next row
+							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA
+							; row with player
+
+++++ 					ldy px						; load the player x
+							lda #ICON_NORTH
+							sta SCREEN+$322+120
+														
+							ldy px						
+							iny								
+							lda (LOB_DATA),y
+							sta e1						; E0
+							sta SCREEN+$323+120
+							
+							ldy px						
+							dey								
+							lda (LOB_DATA),y
+							sta w1						; W0
+							sta SCREEN+$321+120
+							
+							rts							
+							
+
 .east					lda #$05
 							sta pdText	
 							rts
+							
 .south				lda #$13
 							sta pdText
 							rts
+							
 .west					lda #$17
 							sta pdText
-							rts			
-
+							rts
+				
+				
+							
 							
 getWalls			lda #<map						; get low byte of the map
 							sta LOB_DATA				; store in zpage
@@ -584,7 +709,7 @@ setWalls			lda #0					; first we clear all walls
 							lda #64
 +							cmp #SOUTH
 							bne +
-							lda #0							
+							lda #0
 +							ora WALLMASK1
 							sta WALLMASK1
 ++						lda westWall2				; #2 west wall east to ppos
@@ -596,15 +721,15 @@ setWalls			lda #0					; first we clear all walls
 							lda #64
 +							cmp #WEST
 							bne +
-							lda #128							
+							lda #128
 +							cmp #SOUTH
 							bne +
 							lda #0
 +							cmp #EAST
 							bne +
-							lda #0							
+							lda #0
 +							ora WALLMASK1
-							sta WALLMASK1							
+							sta WALLMASK1
 ++						rts
 							
 setDirection	lda pd
@@ -707,7 +832,6 @@ movePlayerN		lda #<map						; get low byte of the map
 							bne -									
 +							ldy px
 							lda (LOB_DATA),y
-							sta SCREEN+$76
 							cmp #W
 							beq +
 							dec py
@@ -786,8 +910,6 @@ drawChars			ldx #0							; x = 0 for our row number
 							rts						
 !zone canvas
 initCanvas		jsr drawHorizon
-							jsr drawCeiling
-							jsr drawFloor
 							lda WALLMASK1
 							sta WALLMASKT
 							lsr WALLMASKT
@@ -1180,7 +1302,7 @@ drawE1				lda #4
 							
 drawHorizon		lda #18
 							sta CHARDATA_W
-							lda #3
+							lda #15
 							sta CHARDATA_H
 							lda #<datHorizon				; HORIZON chars
 							sta LOB_DATA				
@@ -1193,7 +1315,7 @@ drawHorizon		lda #18
 							jsr drawChars
 							lda #18
 							sta CHARDATA_W
-							lda #3
+							lda #15
 							sta CHARDATA_H
 							lda #<datHorizonC				; HORIZON color
 							sta LOB_DATA				
@@ -1206,197 +1328,36 @@ drawHorizon		lda #18
 							jsr drawChars
 							rts					
 							
-drawCeiling		ldx #17
--							lda #$7e
-							sta SCREEN+$0029,x
-							sta SCREEN+$0029+40,x
-							sta SCREEN+$0029+80,x
-							sta SCREEN+$0029+120,x
-							sta SCREEN+$0029+160,x
-							sta SCREEN+$0029+200,x	
-							lda ceilingColor
-							sta SCREENCOLOR+$0029,x
-							sta SCREENCOLOR+$0029+40,x
-							sta SCREENCOLOR+$0029+80,x
-							sta SCREENCOLOR+$0029+120,x
-							sta SCREENCOLOR+$0029+160,x
-							sta SCREENCOLOR+$0029+200,x	
-							dex
-							bpl -
-							rts
-							
-drawFloor			ldx #17
--							lda #$ff
-							sta SCREEN+$0191,x
-							sta SCREEN+$0191+40,x
-							sta SCREEN+$0191+80,x
-							sta SCREEN+$0191+120,x
-							sta SCREEN+$0191+160,x
-							sta SCREEN+$0191+200,x
-							lda floorColor
-							sta SCREENCOLOR+$0191,x
-							sta SCREENCOLOR+$0191+40,x
-							sta SCREENCOLOR+$0191+80,x
-							sta SCREENCOLOR+$0191+120,x
-							sta SCREENCOLOR+$0191+160,x
-							sta SCREENCOLOR+$0191+200,x
-							dex
-							bpl -
-							rts	
-							
+!zone UI
 
-!zone drawUI							
-drawBordesH		ldx #39											
--							lda #$c3
-							sta SCREEN,x					; 1st border
-							sta SCREEN+640,x 			; mid border
-							sta SCREEN+960,x			; last border
-							lda #COLOR_BROWN
-							sta SCREENCOLOR,x
-							sta SCREENCOLOR+640,x
-							sta SCREENCOLOR+960,x										
-							dex
-							bpl -				; stay positve :)
-							rts							
-							
-drawBorderV		lda #$c2
-							;left
-							sta SCREEN+40					
-							sta SCREEN+80
-							sta SCREEN+120
-							sta SCREEN+160
-							sta SCREEN+200
-							sta SCREEN+240
-							sta SCREEN+280
-							sta SCREEN+320
-							sta SCREEN+360
-							sta SCREEN+400
-							sta SCREEN+440
-							sta SCREEN+480
-							sta SCREEN+520
-							sta SCREEN+560
-							sta SCREEN+600
-							sta SCREEN+680
-							sta SCREEN+720
-							sta SCREEN+760
-							sta SCREEN+800
-							sta SCREEN+840
-							sta SCREEN+880
-							sta SCREEN+920
-							; middle
-							sta SCREEN+40+19			
-							sta SCREEN+80+19
-							sta SCREEN+120+19
-							sta SCREEN+160+19
-							sta SCREEN+200+19
-							sta SCREEN+240+19
-							sta SCREEN+280+19
-							sta SCREEN+320+19
-							sta SCREEN+360+19
-							sta SCREEN+400+19
-							sta SCREEN+440+19
-							sta SCREEN+480+19
-							sta SCREEN+520+19
-							sta SCREEN+560+19
-							sta SCREEN+600+19
-							; right
-							sta SCREEN+40+39			
-							sta SCREEN+80+39
-							sta SCREEN+120+39
-							sta SCREEN+160+39
-							sta SCREEN+200+39
-							sta SCREEN+240+39
-							sta SCREEN+280+39
-							sta SCREEN+320+39
-							sta SCREEN+360+39
-							sta SCREEN+400+39
-							sta SCREEN+440+39
-							sta SCREEN+480+39
-							sta SCREEN+520+39
-							sta SCREEN+560+39
-							sta SCREEN+600+39
-							sta SCREEN+680+39
-							sta SCREEN+720+39
-							sta SCREEN+760+39
-							sta SCREEN+800+39
-							sta SCREEN+840+39
-							sta SCREEN+880+39
-							sta SCREEN+920+39							
-							lda #COLOR_BROWN
-							;left
-							sta SCREENCOLOR+40							
-							sta SCREENCOLOR+80
-							sta SCREENCOLOR+120
-							sta SCREENCOLOR+160
-							sta SCREENCOLOR+200
-							sta SCREENCOLOR+240
-							sta SCREENCOLOR+280
-							sta SCREENCOLOR+320
-							sta SCREENCOLOR+360
-							sta SCREENCOLOR+400
-							sta SCREENCOLOR+440
-							sta SCREENCOLOR+480
-							sta SCREENCOLOR+520
-							sta SCREENCOLOR+560
-							sta SCREENCOLOR+600
-							sta SCREENCOLOR+680
-							sta SCREENCOLOR+720
-							sta SCREENCOLOR+760
-							sta SCREENCOLOR+800
-							sta SCREENCOLOR+840
-							sta SCREENCOLOR+880
-							sta SCREENCOLOR+920					
-							; middle
-							sta SCREENCOLOR+40+19						
-							sta SCREENCOLOR+80+19
-							sta SCREENCOLOR+120+19
-							sta SCREENCOLOR+160+19
-							sta SCREENCOLOR+200+19
-							sta SCREENCOLOR+240+19
-							sta SCREENCOLOR+280+19
-							sta SCREENCOLOR+320+19
-							sta SCREENCOLOR+360+19
-							sta SCREENCOLOR+400+19
-							sta SCREENCOLOR+440+19
-							sta SCREENCOLOR+480+19
-							sta SCREENCOLOR+520+19
-							sta SCREENCOLOR+560+19
-							sta SCREENCOLOR+600+19
-							; right
-							sta SCREENCOLOR+40+39						
-							sta SCREENCOLOR+80+39
-							sta SCREENCOLOR+120+39
-							sta SCREENCOLOR+160+39
-							sta SCREENCOLOR+200+39
-							sta SCREENCOLOR+240+39
-							sta SCREENCOLOR+280+39
-							sta SCREENCOLOR+320+39
-							sta SCREENCOLOR+360+39
-							sta SCREENCOLOR+400+39
-							sta SCREENCOLOR+440+39
-							sta SCREENCOLOR+480+39
-							sta SCREENCOLOR+520+39
-							sta SCREENCOLOR+560+39
-							sta SCREENCOLOR+600+39
-							sta SCREENCOLOR+680+39
-							sta SCREENCOLOR+720+39
-							sta SCREENCOLOR+760+39
-							sta SCREENCOLOR+800+39
-							sta SCREENCOLOR+840+39
-							sta SCREENCOLOR+880+39
-							sta SCREENCOLOR+920+39
+drawUi				lda #40
+							sta CHARDATA_W
+							lda #25
+							sta CHARDATA_H
+							lda #<datUi				; UI chars
+							sta LOB_DATA				
+							lda #>datUi					
+							sta HIB_DATA				
+							lda #<UIPOS					
+							sta LOB_SCREEN			
+							lda #>UIPOS					
+							sta HIB_SCREEN
+							jsr drawChars
+							lda #40
+							sta CHARDATA_W
+							lda #25
+							sta CHARDATA_H
+							lda #<datUiC				; UI color
+							sta LOB_DATA				
+							lda #>datUiC					
+							sta HIB_DATA				
+							lda #<UICPOS					
+							sta LOB_SCREEN			
+							lda #>UICPOS					
+							sta HIB_SCREEN
+							jsr drawChars
 							rts
-							
-drawDiamonds	lda	#$da
-							sta SCREEN
-							sta SCREEN+19
-							sta SCREEN+39
-							sta SCREEN+640
-							sta SCREEN+659
-							sta SCREEN+679	
-							sta SCREEN+$03c0
-							sta SCREEN+$03e7
-							rts							
+				
 						
 !zone clearingRoutines						
 clearScreen		lda #147
@@ -1464,22 +1425,28 @@ resultstr		!text "00000000"
 !source "..\_includes\wait.asm"	
 
 !zone data
-map						!byte W,W,W,S,W,W,S,W
-							!byte W,S,W,S,S,S,S,W
-							!byte W,S,W,S,S,S,S,W
-							!byte W,S,S,S,S,S,S,S
-							!byte W,S,S,W,S,W,S,S
-							!byte W,S,S,S,S,W,S,S
-							!byte W,S,S,S,S,W,S,S
-							!byte W,W,W,W,W,W,W,W
+map						!byte W,W,W,W,W,W,S,W,W,W,W,W,W,W,W,W,W
+							!byte W,S,W,S,S,S,S,S,S,S,S,S,S,S,S,S,W
+							!byte W,S,W,S,S,S,S,S,S,S,S,S,S,S,S,S,W
+							!byte W,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,W
+							!byte W,S,S,W,S,W,W,W,S,S,S,S,S,S,S,S,W
+							!byte W,S,S,S,S,W,S,W,S,S,S,S,S,S,S,S,W
+							!byte W,S,S,S,S,W,S,W,S,S,S,S,S,S,S,S,W
+							!byte W,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,W
+							!byte W,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,W
+							!byte W,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,W
+							!byte W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W
+!zone uiData
+datUi				!media "assets\ui.charscreen",char,0,0,40,25
+datUiC			!media "assets\ui.charscreen",color,0,0,40,25
 						
 !zone canvasData
-datHorizon  !media "assets\dungeon.charscreen",char,0,0,18,3											
-datHorizonC !media "assets\dungeon.charscreen",color,0,0,18,3
-datW1				!media "assets\dungeon.charscreen",char,12,3,4,13
-datW1C			!media "assets\dungeon.charscreen",color,12,3,4,13
-datE1				!media "assets\dungeon.charscreen",char,16,3,4,13
-datE1C			!media "assets\dungeon.charscreen",color,16,3,4,13
+datHorizon  !media "assets\dungeon.charscreen",char,0,0,18,15											
+datHorizonC !media "assets\dungeon.charscreen",color,0,0,18,15
+datW1				!media "assets\dungeon.charscreen",char,30,12,4,13
+datW1C			!media "assets\dungeon.charscreen",color,30,12,4,13
+datE1				!media "assets\dungeon.charscreen",char,34,12,4,13
+datE1C			!media "assets\dungeon.charscreen",color,34,12,4,13
 
 *=$2000
 !media "assets\dungeon.charscreen",CHARSET
