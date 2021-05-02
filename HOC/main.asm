@@ -164,6 +164,7 @@ key_Q					lda KEYCOLS
 							asl
 							rol pd
 							jsr setDirection
+							jsr getFOV
 							jsr getWalls
 							jsr setWalls
 							jsr initCanvas
@@ -187,6 +188,7 @@ key_W					lda KEYCOLS
 							sta SCREEN+$65
 							jsr movePlayerF
 							jsr setDirection
+							jsr getFOV
 							jsr getWalls
 							jsr setWalls
 							jsr initCanvas
@@ -226,6 +228,7 @@ key_E					lda KEYCOLS
 							lsr
 							ror pd
 							jsr setDirection
+							jsr getFOV
 							jsr getWalls
 							jsr setWalls
 							jsr initCanvas
@@ -355,7 +358,10 @@ printdebugs		jsr clearValues
 							lda resultstr+2
 							sta SCREEN+$72
 							lda #$04
-							sta SCREEN+$71									
+							sta SCREEN+$71	
+							
+							lda pdText
+							sta SCREEN+$75			
 														
 gameloopEnd		jmp gameloop							
 						
@@ -394,6 +400,46 @@ drawMap				lda #MAPWIDTH
 							jsr drawChars
 							jsr drawPlayer
 							rts
+
+; fov -  directions are px based
+w3 !byte 0
+w2 !byte 0
+w1 !byte 0
+w0 !byte 0
+
+n3 !byte 0
+n2 !byte 0
+n1 !byte 0
+			
+e3 !byte 0
+e2 !byte 0
+e1 !byte 0
+e0 !byte 0
+
+pdText !byte
+						
+getFOV				lda pd
+							cmp #NORTH
+							beq .north
+							cmp #EAST
+							beq .east
+							cmp #SOUTH
+							beq .south
+							cmp #WEST
+							beq .west
+.north				lda #$0e
+							sta pdText
+							rts
+.east					lda #$05
+							sta pdText	
+							rts
+.south				lda #$13
+							sta pdText
+							rts
+.west					lda #$17
+							sta pdText
+							rts			
+
 							
 getWalls			lda #<map						; get low byte of the map
 							sta LOB_DATA				; store in zpage
@@ -411,7 +457,6 @@ getWalls			lda #<map						; get low byte of the map
 							sta HIB_DATA
 							dey
 							bne -
-							
 							; row in front of the player
 +							ldy px						; load the player x
 							lda (LOB_DATA),y
@@ -447,7 +492,6 @@ getWalls			lda #<map						; get low byte of the map
 							lda (LOB_DATA),y
 							sta westWall1
 							
-
 				      rts	
 					
 eastWall1  		!byte 0
@@ -474,7 +518,6 @@ westWall2	 		!byte 0
 setWalls			lda #0					; first we clear all walls
 							sta WALLMASK1
 							sta WALLMASK2
-
 							lda eastWall1		; #1 east wall east to ppos
 							cmp #W
 							bne ++
@@ -492,8 +535,7 @@ setWalls			lda #0					; first we clear all walls
 							bne +
 							lda #0						
 +							ora WALLMASK2
-							sta WALLMASK2
-							
+							sta WALLMASK2							
 ++						lda westWall1		; #1 west wall east to ppos
 							cmp #W
 							bne ++
@@ -511,8 +553,7 @@ setWalls			lda #0					; first we clear all walls
 							bne +
 							lda #0
 +							ora WALLMASK2
-							sta WALLMASK2
-							
+							sta WALLMASK2							
 ++					  lda northWall1		; #1 north wall east to ppos
 							cmp #W
 							bne ++
@@ -531,7 +572,6 @@ setWalls			lda #0					; first we clear all walls
 							lda #0						
 +							ora WALLMASK2
 							sta WALLMASK2
-
 ++						lda eastWall2			; #2 east wall east to ppos
 							cmp #W
 							bne ++
@@ -547,7 +587,6 @@ setWalls			lda #0					; first we clear all walls
 							lda #0							
 +							ora WALLMASK1
 							sta WALLMASK1
-
 ++						lda westWall2				; #2 west wall east to ppos
 							cmp #W
 							bne ++
@@ -565,10 +604,8 @@ setWalls			lda #0					; first we clear all walls
 							bne +
 							lda #0							
 +							ora WALLMASK1
-							sta WALLMASK1
-							
+							sta WALLMASK1							
 ++						rts
-	
 							
 setDirection	lda pd
 							cmp #NORTH
@@ -1117,7 +1154,7 @@ drawE1				lda #4
 							sta CHARDATA_W
 							lda #13
 							sta CHARDATA_H
-							lda #<datE1					; W1 chars
+							lda #<datE1					; E1 chars
 							sta LOB_DATA				
 							lda #>datE1					
 							sta HIB_DATA				
@@ -1130,7 +1167,7 @@ drawE1				lda #4
 							sta CHARDATA_W
 							lda #13
 							sta CHARDATA_H
-							lda #<datE1C					; W1 color
+							lda #<datE1C				; E1 color
 							sta LOB_DATA				
 							lda #>datE1C						
 							sta HIB_DATA				
@@ -1139,82 +1176,7 @@ drawE1				lda #4
 							lda #>E1CPOS						
 							sta HIB_SCREEN
 							jsr drawChars
-							rts								
-										
-drawWall8			lda #$a0
-							ldy #COLOR_WHITE
-							sta SCREEN+$0062
-							sta SCREEN+$0062+39
-							sta SCREEN+$0062+40
-							sta SCREEN+$0062+78
-							sta SCREEN+$0062+79
-							sta SCREEN+$0062+80				
-							sta SCREEN+$0062+399
-							sta SCREEN+$0062+398
-							sta SCREEN+$0062+400					
-							sta SCREEN+$0062+440
-							sta SCREEN+$0062+439
-							sta SCREEN+$0062+479
-							sta SCREEN+$0062+480
-							ldx#3
--							lda #$a0
-							sta SCREEN+$005f+120,x
-							sta SCREEN+$005f+160,x
-							sta SCREEN+$005f+200,x
-							sta SCREEN+$005f+240,x
-							sta SCREEN+$005f+280,x
-							sta SCREEN+$005f+320,x
-							sta SCREEN+$005f+360,x
-							dex
-							bpl -					
-							lda #$e9
-							sta SCREEN+$005f+2
-							sta SCREEN+$005f+41
-							sta SCREEN+$005f+80								
-							lda #$5f
-							sta SCREEN+$005f+400
-							sta SCREEN+$005f+441
-							sta SCREEN+$005f+482
-							tya
-							sta SCREENCOLOR+$0062
-							sta SCREENCOLOR+$0062+40									
-							sta SCREENCOLOR+$0062+80
-							sta SCREENCOLOR+$0062+120
-							sta SCREENCOLOR+$0062+160
-							sta SCREENCOLOR+$0062+200
-							sta SCREENCOLOR+$0062+240
-							sta SCREENCOLOR+$0062+280
-							sta SCREENCOLOR+$0062+320
-							sta SCREENCOLOR+$0062+360
-							sta SCREENCOLOR+$0062+400						
-							sta SCREENCOLOR+$0062+440
-							sta SCREENCOLOR+$0062+480							
-							ldy #COLOR_LIGHTGREY
-							tya
-							ldx #2
--							sta SCREENCOLOR+$005f+120,x
-							sta SCREENCOLOR+$005f+160,x
-							sta SCREENCOLOR+$005f+200,x
-							sta SCREENCOLOR+$005f+240,x
-							sta SCREENCOLOR+$005f+280,x
-							sta SCREENCOLOR+$005f+320,x
-							sta SCREENCOLOR+$005f+360,x
-							dex
-							bpl -							
-							sta SCREENCOLOR+$0062+39
-							sta SCREENCOLOR+$0062+78
-							sta SCREENCOLOR+$0062+79				
-							sta SCREENCOLOR+$0062+399
-							sta SCREENCOLOR+$0062+398					
-							sta SCREENCOLOR+$0062+439
-							sta SCREENCOLOR+$0062+479
-							sta SCREENCOLOR+$005f+2
-							sta SCREENCOLOR+$005f+41
-							sta SCREENCOLOR+$005f+80
-							sta SCREENCOLOR+$005f+400
-							sta SCREENCOLOR+$005f+441
-							sta SCREENCOLOR+$005f+482
-							rts								
+							rts																						
 							
 drawHorizon		lda #18
 							sta CHARDATA_W
@@ -1510,6 +1472,7 @@ map						!byte W,W,W,S,W,W,S,W
 							!byte W,S,S,S,S,W,S,S
 							!byte W,S,S,S,S,W,S,S
 							!byte W,W,W,W,W,W,W,W
+						
 !zone canvasData
 datHorizon  !media "assets\dungeon.charscreen",char,0,0,18,3											
 datHorizonC !media "assets\dungeon.charscreen",color,0,0,18,3
@@ -1519,4 +1482,4 @@ datE1				!media "assets\dungeon.charscreen",char,16,3,4,13
 datE1C			!media "assets\dungeon.charscreen",color,16,3,4,13
 
 *=$2000
-!media 	"assets\dungeon.charsetproject",char
+!media "assets\dungeon.charscreen",CHARSET
