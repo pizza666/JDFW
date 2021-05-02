@@ -36,6 +36,14 @@ ICON_EAST				= 29
 ICON_SOUTH			= 30
 ICON_WEST				= 31
 
+;wall offsets
+W1POS 					= SCREEN+$51
+W1CPOS 					= SCREENCOLOR+$51
+E1POS 					= SCREEN+$5f
+E1CPOS 					= SCREENCOLOR+$5f
+HORIZONPOS			= SCREEN+$119
+HORIZONCPOS			= SCREENCOLOR+$119
+
 ; keyboard
 KEYROWS 				=	$dc00			; peek
 KEYCOLS					= $dc01 		; poke
@@ -123,9 +131,9 @@ E0 = %00000100	; WALLMASK2
 
 !zone gameloop							
 gameloop			
-waitraster		lda VIC_RASTERROWPOS
-			        cmp #$50
-		         	bne waitraster
+waitraster		;lda VIC_RASTERROWPOS
+			        ;cmp #$50
+		         	;bne waitraster
 
 							; TODO refactor the key loop with lsr maybe							
 							
@@ -307,40 +315,40 @@ key_0					lda KEYCOLS
 							jsr drawMap
 							jsr drawPlayer
 							
-printdebugs		jsr clearValues					
+printdebugs		jsr clearValues						
 							;jsr initCanvas
 							lda py					   ; player y debug
 							sta value
 							jsr printdec
-							lda resultstr							
-							sta SCREEN+$6a
+							lda resultstr								
+							sta SCREEN+$6f
 							lda resultstr+1
-							sta SCREEN+$69
+							sta SCREEN+$6e
 							lda resultstr+2
-							sta SCREEN+$68
+							sta SCREEN+$6d
 							lda #$19
-							sta SCREEN+$67
+							sta SCREEN+$6c
 							
 							jsr clearValues
 							
 							lda px						; player x debug
 							sta value
 							jsr printdec
-							lda resultstr							
-							sta SCREEN+$6f
+							lda resultstr								
+							sta SCREEN+$6a
 							lda resultstr+1
-							sta SCREEN+$6e
+							sta SCREEN+$69
 							lda resultstr+2
-							sta SCREEN+$6d
+							sta SCREEN+$68
 							lda #$18
-							sta SCREEN+$6c
+							sta SCREEN+$67
 						
 							jsr clearValues
 							
 							lda pd						; player x debug
 							sta value
 							jsr printdec
-							lda resultstr							
+							lda resultstr								
 							sta SCREEN+$74
 							lda resultstr+1
 							sta SCREEN+$73
@@ -348,17 +356,7 @@ printdebugs		jsr clearValues
 							sta SCREEN+$72
 							lda #$04
 							sta SCREEN+$71									
-							
-							; little hack to get player on map for now
-							; we should rewrite the kernal routinges
-							
-							;clc
-							;ldy px
-							;ldx py
-							;jsr PLOT
-							;lda #$da
-							;jsr PRINT
-							
+														
 gameloopEnd		jmp gameloop							
 						
 
@@ -368,11 +366,10 @@ gameloopEnd		jmp gameloop
 
 ceilingColor	!byte	COLOR_DARKGREY
 floorColor		!byte COLOR_BLUE
-px						!byte 1,0,0,0				; player x coordinate
-py						!byte 2,0,0,0				; player y coordinate
-pd						!byte %10001000		; player direction
-pIco					!byte	ICON_NORTH			; which icon to use for the player on map
-
+px						!byte 2,0,0,0				; player x coordinate
+py						!byte 3,0,0,0				; player y coordinate
+pd						!byte %10001000			; player direction
+pIco					!byte	ICON_NORTH		; which icon to use for the player on map
 
 !zone subRoutines
 ; #  sub routines here
@@ -776,10 +773,10 @@ initCanvas		jsr drawHorizon
 							jsr drawWall6
 +							lsr WALLMASKT
 							bcc +
-							jsr drawWall7
+							jsr drawW1
 +							lsr WALLMASKT
 							bcc +
-							jsr drawWall8	
+							jsr drawE1	
 +						  lda WALLMASK2		; next wallmask byte here
 							sta WALLMASKT
 							lsr WALLMASKT
@@ -1087,79 +1084,62 @@ drawWallB			lda #$a0
 							sta SCREENCOLOR+$003a
 							sta SCREENCOLOR+$026a
 							rts									
-							
-drawWall7			lda #$a0
-							ldy #COLOR_WHITE
-							sta SCREEN+$0051
-							sta SCREEN+$0051+40
-							sta SCREEN+$0051+41	
-							sta SCREEN+$0051+80
-							sta SCREEN+$0051+81
-							sta SCREEN+$0051+82
-							ldx#3
--							lda #$a0
-							sta SCREEN+$0051+120,x
-							sta SCREEN+$0051+160,x
-							sta SCREEN+$0051+200,x
-							sta SCREEN+$0051+240,x
-							sta SCREEN+$0051+280,x
-							sta SCREEN+$0051+320,x
-							sta SCREEN+$0051+360,x
-							dex
-							bpl -
-							sta SCREEN+$0051+400
-							sta SCREEN+$0051+401
-							sta SCREEN+$0051+402		
-							sta SCREEN+$0051+440
-							sta SCREEN+$0051+441
-							sta SCREEN+$0051+480				
-							lda #$df
-							sta SCREEN+$0051+1
-							sta SCREEN+$0051+42
-							sta SCREEN+$0051+83							
-							lda #$69
-							sta SCREEN+$0051+403
-							sta SCREEN+$0051+442
-							sta SCREEN+$0051+481
-							tya
-							sta SCREENCOLOR+$0051
-							sta SCREENCOLOR+$0051+40								
-							sta SCREENCOLOR+$0051+80
-							sta SCREENCOLOR+$0051+120
-							sta SCREENCOLOR+$0051+160
-							sta SCREENCOLOR+$0051+200
-							sta SCREENCOLOR+$0051+240
-							sta SCREENCOLOR+$0051+280
-							sta SCREENCOLOR+$0051+320
-							sta SCREENCOLOR+$0051+360
-							sta SCREENCOLOR+$0051+400					
-							sta SCREENCOLOR+$0051+440
-							sta SCREENCOLOR+$0051+480						
-							ldy #COLOR_LIGHTGREY
-							tya
-							ldx #2
--							sta SCREENCOLOR+$0052+120,x
-							sta SCREENCOLOR+$0052+160,x
-							sta SCREENCOLOR+$0052+200,x
-							sta SCREENCOLOR+$0052+240,x
-							sta SCREENCOLOR+$0052+280,x
-							sta SCREENCOLOR+$0052+320,x
-							sta SCREENCOLOR+$0052+360,x
-							dex
-							bpl -
-							sta SCREENCOLOR+$0051+1
-							sta SCREENCOLOR+$0051+42
-							sta SCREENCOLOR+$0051+83
-							sta SCREENCOLOR+$0051+403
-							sta SCREENCOLOR+$0051+442
-							sta SCREENCOLOR+$0051+481						
-							sta SCREENCOLOR+$0051+41	
-							sta SCREENCOLOR+$0051+81
-							sta SCREENCOLOR+$0051+82
-							sta SCREENCOLOR+$0051+401
-							sta SCREENCOLOR+$0051+402				
-							sta SCREENCOLOR+$0051+441
-							rts															
+
+drawW1				lda #4
+							sta CHARDATA_W
+							lda #13
+							sta CHARDATA_H
+							lda #<datW1					; W1 chars
+							sta LOB_DATA				
+							lda #>datW1					
+							sta HIB_DATA				
+							lda #<W1POS					
+							sta LOB_SCREEN			
+							lda #>W1POS					
+							sta HIB_SCREEN
+							jsr drawChars
+							lda #4
+							sta CHARDATA_W
+							lda #13
+							sta CHARDATA_H
+							lda #<datW1C				; W1 color
+							sta LOB_DATA				
+							lda #>datW1C					
+							sta HIB_DATA				
+							lda #<W1CPOS					
+							sta LOB_SCREEN			
+							lda #>W1CPOS					
+							sta HIB_SCREEN
+							jsr drawChars
+							rts
+
+drawE1				lda #4
+							sta CHARDATA_W
+							lda #13
+							sta CHARDATA_H
+							lda #<datE1					; W1 chars
+							sta LOB_DATA				
+							lda #>datE1					
+							sta HIB_DATA				
+							lda #<E1POS					
+							sta LOB_SCREEN			
+							lda #>E1POS					
+							sta HIB_SCREEN
+							jsr drawChars
+							lda #4
+							sta CHARDATA_W
+							lda #13
+							sta CHARDATA_H
+							lda #<datE1C					; W1 color
+							sta LOB_DATA				
+							lda #>datE1C						
+							sta HIB_DATA				
+							lda #<E1CPOS						
+							sta LOB_SCREEN			
+							lda #>E1CPOS						
+							sta HIB_SCREEN
+							jsr drawChars
+							rts								
 										
 drawWall8			lda #$a0
 							ldy #COLOR_WHITE
@@ -1236,22 +1216,34 @@ drawWall8			lda #$a0
 							sta SCREENCOLOR+$005f+482
 							rts								
 							
-drawHorizon		ldx #17
-							lda #$e6
-							ldy #COLOR_DARKGREY
-							;jmp drawHorizonL																											
--							sta SCREEN+$0119,x
-							sta SCREEN+$0119+40,x
-							sta SCREEN+$0119+80,x
-							pha
-							tya
-							sta SCREENCOLOR+$0119,x
-							sta SCREENCOLOR+$0119+40,x
-							sta SCREENCOLOR+$0119+80,x
-							pla
-							dex
-							bpl -
-							rts	
+drawHorizon		lda #18
+							sta CHARDATA_W
+							lda #3
+							sta CHARDATA_H
+							lda #<datHorizon				; HORIZON chars
+							sta LOB_DATA				
+							lda #>datHorizon					
+							sta HIB_DATA				
+							lda #<HORIZONPOS					
+							sta LOB_SCREEN			
+							lda #>HORIZONPOS					
+							sta HIB_SCREEN
+							jsr drawChars
+							lda #18
+							sta CHARDATA_W
+							lda #3
+							sta CHARDATA_H
+							lda #<datHorizonC				; HORIZON color
+							sta LOB_DATA				
+							lda #>datHorizonC					
+							sta HIB_DATA				
+							lda #<HORIZONCPOS					
+							sta LOB_SCREEN			
+							lda #>HORIZONCPOS					
+							sta HIB_SCREEN
+							jsr drawChars
+							rts					
+							
 drawCeiling		ldx #17
 -							lda #$7e
 							sta SCREEN+$0029,x
@@ -1518,6 +1510,13 @@ map						!byte W,W,W,S,W,W,S,W
 							!byte W,S,S,S,S,W,S,S
 							!byte W,S,S,S,S,W,S,S
 							!byte W,W,W,W,W,W,W,W
+!zone canvasData
+datHorizon  !media "assets\dungeon.charscreen",char,0,0,18,3											
+datHorizonC !media "assets\dungeon.charscreen",color,0,0,18,3
+datW1				!media "assets\dungeon.charscreen",char,12,3,4,13
+datW1C			!media "assets\dungeon.charscreen",color,12,3,4,13
+datE1				!media "assets\dungeon.charscreen",char,16,3,4,13
+datE1C			!media "assets\dungeon.charscreen",color,16,3,4,13
 
 *=$2000
-!media 	"dungeon.charsetproject",char
+!media 	"assets\dungeon.charsetproject",char
