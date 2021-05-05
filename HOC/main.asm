@@ -11,6 +11,9 @@ WALLMASK1				= $02 				; 1st wallmask register
 WALLMASK2				= $03 ; 2nd wallmask registesr
 WALLMASKT				= $04 ; temporary wallmask
 
+FOVLO						= $05
+FOVHI						= $06
+
 ; Zero Pages
 LOB_DATA				= $40		; data lobyte in ZP
 HIB_DATA				= $41   ; data hibyte in ZP
@@ -140,9 +143,14 @@ E0 = %00000100	; WALLMASK2
 
 !zone gameloop							
 gameloop			
-waitraster		;lda VIC_RASTERROWPOS
-			        ;cmp #$50
-		         	;bne waitraster
+wait 					lda #100
+wait1					cmp $d012
+							bne wait1
+							inc $d020
+							ldx #0
+wait2 				inx
+							bne wait2
+							dec $d020
 
 							; TODO refactor the key loop with lsr maybe							
 							
@@ -174,8 +182,8 @@ key_Q					lda KEYCOLS
 							rol pd
 							jsr setDirection
 							jsr getFov
-							jsr getWalls
-							jsr setWalls
+							;jsr getWalls
+							;jsr setWalls
 							jsr initCanvas
 							jsr drawMap
 							jsr drawPlayer											
@@ -198,8 +206,8 @@ key_W					lda KEYCOLS
 							jsr movePlayerF
 							jsr setDirection
 							jsr getFov
-							jsr getWalls
-							jsr setWalls
+							;jsr getWalls
+							;jsr setWalls
 							jsr initCanvas
 							jsr drawMap
 							jsr drawPlayer						
@@ -238,8 +246,8 @@ key_E					lda KEYCOLS
 							ror pd
 							jsr setDirection
 							jsr getFov
-							jsr getWalls
-							jsr setWalls
+							;jsr getWalls
+							;jsr setWalls
 							jsr initCanvas
 							jsr drawMap
 							jsr drawPlayer			
@@ -411,19 +419,19 @@ drawMap				lda #MAPWIDTH
 							rts
 
 ; fov -  directions are px based
-w3 !byte 0
-w2 !byte 0
-w1 !byte 0
-w0 !byte 0
 
-n3 !byte 0
-n2 !byte 0
-n1 !byte 0
-			
+fov
+w3 !byte 0
 e3 !byte 0
+n3 !byte 0
+w2 !byte 0
 e2 !byte 0
+n2 !byte 0
+w1 !byte 0
 e1 !byte 0
+n1 !byte 0	
 e0 !byte 0
+w0 !byte 0
 
 pdText !byte
 						
@@ -431,11 +439,19 @@ getFov				lda pd
 							cmp #NORTH
 							bne +
 							jsr getFovNorth
++							cmp #EAST
+							bne +
+							jsr getFovEast	
++							cmp #SOUTH
+							bne +
+							jsr getFovSouth
++							cmp #WEST
+							bne +
+							jsr getFovWest					
 +							rts
-														
-getFovNorth		lda #$0e						; player facing north
-							sta pdText					;
-							lda #<map						; 		E3 N3 E3
+
+	
+getFovNorth		lda #<map						; 		E3 N3 E3
 							sta LOB_DATA				; 		E2 N2	E2
 							lda #>map						; 		E1 N1	E1
 							sta HIB_DATA				;     E0 PL E0
@@ -443,7 +459,7 @@ getFovNorth		lda #$0e						; player facing north
 							dey
 							beq +++							; py-1 is 0? were in the first row skip the row loop		
 							dey
-							beq ++								; py-1 is 0? were in the first row skip the row loop		
+							beq ++							; py-1 is 0? were in the first row skip the row loop		
 							dey
 							beq +			
 -							lda LOB_DATA
@@ -533,38 +549,133 @@ getFovNorth		lda #$0e						; player facing north
 							; row with player
 
 ++++ 					ldy px						; load the player x
-							lda #ICON_NORTH
+							lda #$0e					; print N
 							sta SCREEN+$322+120
 														
 							ldy px						
 							iny								
 							lda (LOB_DATA),y
-							sta e1						; E0
+							sta e0						; E0
 							sta SCREEN+$323+120
 							
 							ldy px						
 							dey								
 							lda (LOB_DATA),y
-							sta w1						; W0
+							sta w0						; W0
 							sta SCREEN+$321+120
 							
 							rts							
-							
 
-.east					lda #$05
-							sta pdText	
+
+getFovEast		lda #$05
+							sta SCREEN+$322+120		; print E
 							rts
 							
-.south				lda #$13
-							sta pdText
+getFovSouth		lda #<map						; 		E0 PL W0						
+							sta LOB_DATA				; 		E1 N1	W1			
+							lda #>map						; 		E2 N2	W2		
+							sta HIB_DATA				;     E3 N3 W3
+							ldy py			
+-							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA
+							dey						
+							bne -
+							
+							; row 0 with the player
+++++ 					ldy px							; PL (N0)
+							lda #$13						
+							sta SCREEN+$322+120														
+							ldy px							; W0
+							iny								
+							lda (LOB_DATA),y
+							sta w0							
+							sta SCREEN+$323+120							
+							ldy px							; E0					
+							dey								
+							lda (LOB_DATA),y
+							sta e0						
+							sta SCREEN+$321+120
+							; next row
+							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA					
+							; row 1 below the player
+							ldy px							; N1
+							lda (LOB_DATA),y
+							sta SCREEN+$322+80
+							sta n1
+							ldy px							; W1				
+							iny								
+							lda (LOB_DATA),y
+							sta w1														
+							sta SCREEN+$323+80	
+							ldy px							; E1
+							dey								
+							lda (LOB_DATA),y
+							sta e1							
+							sta SCREEN+$321+80					
+							; next row
+							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA					
+							; row 2 below the player
+							ldy px							; N1
+							lda (LOB_DATA),y
+							sta SCREEN+$322+40
+							sta n2
+							ldy px							; W1	
+							iny								
+							lda (LOB_DATA),y
+							sta w2														
+							sta SCREEN+$323+40			
+							ldy px							; E1
+							dey								
+							lda (LOB_DATA),y
+							sta e2							
+							sta SCREEN+$321+40		
+							; next row
+							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA					
+							; row 3 below the player
+							ldy px							; N3							
+							lda (LOB_DATA),y
+							sta SCREEN+$322
+							sta n3														
+							ldy px							; W3						
+							iny								
+							lda (LOB_DATA),y
+							sta w3														
+							sta SCREEN+$323								
+							ldy px							; E3						
+							dey								
+							lda (LOB_DATA),y
+							sta e3							
+							sta SCREEN+$321
+							
 							rts
 							
-.west					lda #$17
-							sta pdText
+getFovWest		lda #$17
+							sta SCREEN+$322+120	; print W
 							rts
-				
-				
-							
+					
 							
 getWalls			lda #<map						; get low byte of the map
 							sta LOB_DATA				; store in zpage
@@ -910,47 +1021,80 @@ drawChars			ldx #0							; x = 0 for our row number
 							rts						
 !zone canvas
 initCanvas		jsr drawHorizon
-							lda WALLMASK1
-							sta WALLMASKT
-							lsr WALLMASKT
-							bcc +
-							jsr drawWall1
-+						  lsr WALLMASKT
-							bcc +
-							jsr drawWall2														
-+						  lsr WALLMASKT
-							bcc +
-							jsr drawWall3	
-+							lsr WALLMASKT
-							bcc +
-							jsr drawWall4
-+							lsr WALLMASKT
-							bcc +
-							jsr drawWall5
-+							lsr WALLMASKT
-							bcc +
-							jsr drawWall6
-+							lsr WALLMASKT
-							bcc +
-							jsr drawW1
-+							lsr WALLMASKT
-							bcc +
-							jsr drawE1	
-+						  lda WALLMASK2		; next wallmask byte here
-							sta WALLMASKT
-							lsr WALLMASKT
-							bcc +		
-							jsr drawWall9
-+							lsr WALLMASKT
-							bcc +
-							jsr drawWallA	
-+							lsr WALLMASKT
-							bcc +
-							jsr drawWallB							
+							lda #<fov
+							sta FOVLO
+							lda #>fov
+							sta FOVHI
+							
+							ldy #0
+							lda (FOVLO),y
+							cmp #W
+							bne +
+							tya
+							pha
+							jsr drawW3
+							pla
+							tay
++							iny							
+							lda (FOVLO),y
+							cmp #W
+							bne +
+							tya
+							pha
+							jsr drawE3
+							pla
+							tay
++							iny							
+							lda (FOVLO),y
+							cmp #W
+							bne +
+							tya
+							pha
+							jsr drawN3
+							pla
+							tay
+							
+;							lda WALLMASK1
+;							sta WALLMASKT
+;							lsr WALLMASKT
+;							bcc +
+;							jsr drawW3
+;+						  lsr WALLMASKT
+;							bcc +
+;							jsr drawN3														
+;+						  lsr WALLMASKT
+;							bcc +
+;							jsr drawE3
+;+							lsr WALLMASKT
+;							bcc +
+;							jsr drawW2
+;+							lsr WALLMASKT
+;							bcc +
+;							jsr drawE2
+;+							lsr WALLMASKT
+;							bcc +
+;							jsr drawN2
+;+							lsr WALLMASKT
+;							bcc +
+;							jsr drawW1
+;+							lsr WALLMASKT
+;							bcc +
+;							jsr drawE1	
+;+						  lda WALLMASK2		; next wallmask byte here
+;							sta WALLMASKT
+;							lsr WALLMASKT
+;							bcc +		
+;							jsr drawN1
+;+							lsr WALLMASKT
+;							bcc +
+;							jsr drawW0	
+;+							lsr WALLMASKT
+;							bcc +
+;							jsr drawE0							
 +							rts					
 
 !zone drawCanvas						; single routines for drawing walls, floor and ceiling
-drawWall1			ldx #5		
+drawW3				ldx #5		
 							lda #$a0
 							ldy #COLOR_DARKGREY
 -							sta SCREEN+$0119,x
@@ -966,7 +1110,7 @@ drawWall1			ldx #5
 							bpl -
 							rts
 
-drawWall2			ldx #5		
+drawN3				ldx #5		
 							lda #$a0
 							ldy #COLOR_DARKGREY
 -							sta SCREEN+$011F,x
@@ -982,7 +1126,7 @@ drawWall2			ldx #5
 							bpl -
 							rts
 							
-drawWall3			ldx #5		
+drawE3				ldx #5		
 							lda #$a0
 							ldy #COLOR_DARKGREY
 -							sta SCREEN+$0125,x
@@ -998,7 +1142,7 @@ drawWall3			ldx #5
 							bpl -
 							rts
 							
-drawWall4			lda #$a0
+drawW2				lda #$a0
 							ldx #3
 							ldy #COLOR_LIGHTGREY
 -							sta SCREEN+$00c9,x
@@ -1049,7 +1193,7 @@ drawWall4			lda #$a0
 							sta SCREENCOLOR+$00c9+4+240							
 							rts	
 							
-drawWall5			lda #$a0
+drawE2				lda #$a0
 							ldx #3
 							ldy #COLOR_LIGHTGREY
 dW5L					sta SCREEN+$00d7,x
@@ -1102,7 +1246,7 @@ dW5L2					sta SCREEN+$00d5+40,x								;  []
 							sta SCREENCOLOR+$00d6+39
 							rts									
 
-drawWall6			lda #$a0
+drawN2				lda #$a0
 							ldx #9
 							ldy #COLOR_LIGHTGREY
 dW6L					lda #$a0
@@ -1131,7 +1275,7 @@ dW6L					lda #$a0
 							bpl dW6L
 							rts
 							
-drawWall9			lda #$a0
+drawN1				lda #$a0
 							ldx #15
 							ldy #COLOR_WHITE
 -							lda #$a0
@@ -1172,7 +1316,7 @@ drawWall9			lda #$a0
 							bpl -
 							rts							
 
-drawWallA			lda #$a0
+drawW0				lda #$a0
 							sta SCREEN+$0051
 							sta SCREEN+$0051+40
 							sta SCREEN+$0051+80
@@ -1208,7 +1352,7 @@ drawWallA			lda #$a0
 							sta SCREENCOLOR+$0259
 							rts					
 							
-drawWallB			lda #$a0
+drawE0				lda #$a0
 							sta SCREEN+$0062
 							sta SCREEN+$0062+40
 							sta SCREEN+$0062+80
@@ -1422,15 +1566,14 @@ resultstr		!text "00000000"
 
 !zone externalSubRoutines							
 ; we include external subroutes
-!source "..\_includes\wait.asm"	
 
 !zone data
 map						!byte W,W,W,W,W,W,S,W,W,W,W,W,W,W,W,W,W
 							!byte W,S,W,S,S,S,S,S,S,S,S,S,S,S,S,S,W
-							!byte W,S,W,S,S,S,S,S,S,S,S,S,S,S,S,S,W
+							!byte W,S,W,S,S,S,S,S,S,S,W,W,S,W,S,S,W
 							!byte W,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,W
-							!byte W,S,S,W,S,W,W,W,S,S,S,S,S,S,S,S,W
-							!byte W,S,S,S,S,W,S,W,S,S,S,S,S,S,S,S,W
+							!byte W,S,S,W,S,W,W,W,S,S,W,W,S,W,S,S,W
+							!byte W,S,S,S,S,W,S,W,S,S,W,W,S,W,S,S,W
 							!byte W,S,S,S,S,W,S,W,S,S,S,S,S,S,S,S,W
 							!byte W,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,W
 							!byte W,S,S,S,S,S,S,S,S,S,S,S,S,S,S,S,W
