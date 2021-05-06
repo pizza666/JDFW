@@ -6,11 +6,7 @@
 ; #  if it gets to large
 ; ######################################
 
-; zero pages (use thrifty)
-WALLMASK1				= $02 				; 1st wallmask register
-WALLMASK2				= $03 ; 2nd wallmask registesr
-WALLMASKT				= $04 ; temporary wallmask
-
+; fov vector
 FOVLO						= $05
 FOVHI						= $06
 
@@ -34,7 +30,7 @@ UICPOS					= SCREENCOLOR
 MAPWIDTH				= 17
 MAPHIGHT				= 11
 W							  = $d6		;normal wall
-S								= $20		;normal floor/sky
+S								= $20		;normal floor/sky (space)
 MAPOFFSET				= $b5		
 MAPPOS 					= SCREEN+MAPOFFSET
 MAPCOLOR				= SCREENCOLOR+MAPOFFSET
@@ -98,51 +94,19 @@ KEYROW_8				= %01111111 ; (127/$7f)     | STOP  ($  )|   q   ($11)|COMMODR($  )|
 							
 							jsr clearScreen							
 							jsr drawUi
-							;jsr drawBordesH   ; draw the borders and
-							;jsr drawBorderV   ; decorations
-							;jsr drawDiamonds  ;
 							jsr drawMap;
 							
+							jsr getFov
+							jsr initCanvas
 							;															
 							;			123	         possible map positions											
 							;     465          draw walls in ascending
 						  ;			798	         order to get correct  														
 							;			AxB	         canvas layers		 								
 
-; wall naming for drawing if pd=means north
-W3 = %00000001  ; WALLMASK1
-W2 = %00000100  ; WALLMASK1
-W1 = %01000000  ; WALLMASK1
-W0 = %00000010  ; WALLMASK2
-
-N3 = %00000010  ; WALLMASK1
-N2 = %01000000  ; WALLMASK1
-N1 = %00000001  ; WALLMASK2
-							
-E3 = %00000100  ; WALLMASK1
-E2 = %10010000  ; WALLMASK1
-E1 = %00000000  ; WALLMASK1
-E0 = %00000100	; WALLMASK2
-
-
-		
-							;			87654321														
-							lda #%00000000
-							sta WALLMASK1
-							;			-----BA9
-							lda #%00000000
-							sta WALLMASK2
-							; load inital walls (for testing)
-
-							; draw the initial canvase
-							jsr getWalls
-							jsr setWalls
-							jsr initCanvas
-																							
-							; start the game loop
 
 !zone gameloop							
-gameloop			
+gameloop									; start the game loop
 wait 					lda #100
 wait1					cmp $d012
 							bne wait1
@@ -153,27 +117,19 @@ wait2 				inx
 							dec $d020
 
 							; TODO refactor the key loop with lsr maybe							
-							
+!zone readKeyboard								
 							lda #KEYROW_8				; #8
 key_1					sta KEYROWS
 							lda KEYCOLS
 							and #1
 							bne key_2		
-							lda #1
-							eor WALLMASK1
-							sta WALLMASK1
 							lda #$31
-							sta SCREEN+$65														
-							jsr initCanvas												
+							sta SCREEN+$65																										
 key_2					lda KEYCOLS
 							and #8
-							bne key_Q
-							lda #2
-							eor WALLMASK1
-							sta WALLMASK1						
+							bne key_Q					
 							lda #$32
 							sta SCREEN+$65
-							jsr initCanvas
 key_Q					lda KEYCOLS
 							and #64			
 							bne key_3
@@ -182,8 +138,6 @@ key_Q					lda KEYCOLS
 							rol pd
 							jsr setDirection
 							jsr getFov
-							;jsr getWalls
-							;jsr setWalls
 							jsr initCanvas
 							jsr drawMap
 							jsr drawPlayer											
@@ -191,10 +145,7 @@ key_3					lda #KEYROW_2				; #2
 							sta KEYROWS
 							lda KEYCOLS
 							and #1
-							bne key_W
-							lda #4
-							eor WALLMASK1
-							sta WALLMASK1						
+							bne key_W						
 							lda #$33
 							sta SCREEN+$65
 							jsr initCanvas	
@@ -222,10 +173,7 @@ key_A					lda KEYCOLS
 							jsr drawPlayer						
 key_4					lda KEYCOLS
 							and #8
-							bne key_S
-							lda #8
-							eor WALLMASK1
-							sta WALLMASK1						
+							bne key_S						
 							lda #$34
 							sta SCREEN+$65
 							jsr initCanvas
@@ -255,10 +203,7 @@ key_5					lda #KEYROW_3			; # 3
 							sta KEYROWS
 							lda KEYCOLS
 							and #1
-							bne key_D
-							lda #16
-							eor WALLMASK1
-							sta WALLMASK1						
+							bne key_D						
 							lda #$35
 							sta SCREEN+$65
 							jsr initCanvas
@@ -273,10 +218,7 @@ key_D					lda KEYCOLS
 							jsr drawPlayer
 key_6					lda KEYCOLS
 							and #8
-							bne key_7
-							lda #32
-							eor WALLMASK1
-							sta WALLMASK1						
+							bne key_7					
 							lda #$36
 							sta SCREEN+$65
 							jsr initCanvas	
@@ -284,28 +226,19 @@ key_7					lda #KEYROW_4			; #4
 							sta KEYROWS
 							lda KEYCOLS
 							and #1
-							bne key_8
-							lda #64
-							eor WALLMASK1
-							sta WALLMASK1						
+							bne key_8				
 							lda #$37
 							sta SCREEN+$65
 							jsr initCanvas
 key_8					lda KEYCOLS
 							and #8
-							bne key_B
-							lda #128
-							eor WALLMASK1
-							sta WALLMASK1						
+							bne key_B						
 							lda #$38
 							sta SCREEN+$65
 							jsr initCanvas
 key_B					lda KEYCOLS
 							and #16
-							bne key_9
-							lda #4
-							eor WALLMASK2
-							sta WALLMASK2						
+							bne key_9						
 							lda #$02
 							sta SCREEN+$65
 							jsr initCanvas												
@@ -314,18 +247,12 @@ key_9					lda #KEYROW_5		; #5
 							lda KEYCOLS
 							and #1
 							bne key_0		
-							lda #1
-							eor WALLMASK2
-							sta WALLMASK2
 							lda #$39
 							sta SCREEN+$65														
 							jsr initCanvas									
 key_0					lda KEYCOLS
 							and #8
 							bne printdebugs		
-							lda #0
-							sta WALLMASK1
-							sta WALLMASK2
 							lda #$30
 							sta SCREEN+$65														
 							jsr initCanvas
@@ -334,7 +261,8 @@ key_0					lda KEYCOLS
 							sta py
 							jsr drawMap
 							jsr drawPlayer
-							
+
+!zone debug							
 printdebugs		jsr clearValues						
 							;jsr initCanvas
 							lda py					   ; player y debug
@@ -375,10 +303,7 @@ printdebugs		jsr clearValues
 							lda resultstr+2
 							sta SCREEN+$72
 							lda #$04
-							sta SCREEN+$71	
-							
-							lda pdText
-							sta SCREEN+$75			
+							sta SCREEN+$71			
 														
 gameloopEnd		jmp gameloop							
 						
@@ -389,8 +314,8 @@ gameloopEnd		jmp gameloop
 
 ceilingColor	!byte	COLOR_DARKGREY
 floorColor		!byte COLOR_BLUE
-px						!byte 2,0,0,0				; player x coordinate
-py						!byte 3,0,0,0				; player y coordinate
+px						!byte 4,0,0,0				; player x coordinate
+py						!byte 7,0,0,0				; player y coordinate
 pd						!byte %10001000			; player direction
 pIco					!byte	ICON_NORTH		; which icon to use for the player on map
 
@@ -430,10 +355,8 @@ n2 !byte 0
 w1 !byte 0
 e1 !byte 0
 n1 !byte 0	
-e0 !byte 0
 w0 !byte 0
-
-pdText !byte
+e0 !byte 0
 						
 getFov				lda pd
 							cmp #NORTH
@@ -441,7 +364,7 @@ getFov				lda pd
 							jsr getFovNorth
 +							cmp #EAST
 							bne +
-							jsr getFovEast	
+							jsr getFovEast
 +							cmp #SOUTH
 							bne +
 							jsr getFovSouth
@@ -450,7 +373,6 @@ getFov				lda pd
 							jsr getFovWest					
 +							rts
 
-	
 getFovNorth		lda #<map						; 		E3 N3 E3
 							sta LOB_DATA				; 		E2 N2	E2
 							lda #>map						; 		E1 N1	E1
@@ -567,9 +489,95 @@ getFovNorth		lda #<map						; 		E3 N3 E3
 							rts							
 
 
-getFovEast		lda #$05
-							sta SCREEN+$322+120		; print E
-							rts
+getFovEast		lda #<map												; 		E3 N3 E3
+							sta LOB_DATA				; 		E2 N2	E2
+							lda #>map						; 		E1 N1	E1
+							sta HIB_DATA				;     E0 PL E0
+							ldy py
+							dey
+							beq +									; py-1 is 0? were in the first row skip the row loop						
+-							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA
+							dey
+							bne -
+							
+							; 1 rows in above of the player													
++							ldy px							; W0								
+							lda (LOB_DATA),y
+							sta w0
+							sta SCREEN+$321+120
+							iny							
+							lda (LOB_DATA),y
+							sta w1
+							sta SCREEN+$321+80
+							iny							
+							lda (LOB_DATA),y							
+							sta w2
+							sta SCREEN+$321+40
+							iny							
+							lda (LOB_DATA),y
+							sta w3
+							sta SCREEN+$321	
+							
+							; next row
+							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA
+							
+							; row with the player						
+							
+							ldy px							; W0								
+							iny							
+							lda (LOB_DATA),y
+							sta n1
+							sta SCREEN+$322+80
+							iny							
+							lda (LOB_DATA),y							
+							sta n2
+							sta SCREEN+$322+40
+							iny							
+							lda (LOB_DATA),y
+							sta n3
+							sta SCREEN+$322	
+							
+							; next row
+							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA
+							
+							; row below the player
+							ldy px																						
+							lda (LOB_DATA),y
+							sta e0
+							sta SCREEN+$323+120
+							iny							
+							lda (LOB_DATA),y							
+							sta e1
+							sta SCREEN+$323+80
+							iny							
+							lda (LOB_DATA),y
+							sta e2
+							sta SCREEN+$323+40		
+							iny							
+							lda (LOB_DATA),y
+							sta e3
+							sta SCREEN+$323		
+					
++++						rts
+							
 							
 getFovSouth		lda #<map						; 		E0 PL W0						
 							sta LOB_DATA				; 		E1 N1	W1			
@@ -584,8 +592,7 @@ getFovSouth		lda #<map						; 		E0 PL W0
 							adc #0
 							sta HIB_DATA
 							dey						
-							bne -
-							
+							bne -							
 							; row 0 with the player
 ++++ 					ldy px							; PL (N0)
 							lda #$13						
@@ -594,12 +601,12 @@ getFovSouth		lda #<map						; 		E0 PL W0
 							iny								
 							lda (LOB_DATA),y
 							sta w0							
-							sta SCREEN+$323+120							
+							sta SCREEN+$321+120							
 							ldy px							; E0					
 							dey								
 							lda (LOB_DATA),y
 							sta e0						
-							sta SCREEN+$321+120
+							sta SCREEN+$323+120
 							; next row
 							lda LOB_DATA
 							clc
@@ -613,16 +620,17 @@ getFovSouth		lda #<map						; 		E0 PL W0
 							lda (LOB_DATA),y
 							sta SCREEN+$322+80
 							sta n1
+
 							ldy px							; W1				
 							iny								
 							lda (LOB_DATA),y
 							sta w1														
-							sta SCREEN+$323+80	
+							sta SCREEN+$321+80		
 							ldy px							; E1
 							dey								
 							lda (LOB_DATA),y
 							sta e1							
-							sta SCREEN+$321+80					
+							sta SCREEN+$323+80						
 							; next row
 							lda LOB_DATA
 							clc
@@ -632,20 +640,20 @@ getFovSouth		lda #<map						; 		E0 PL W0
 							adc #0
 							sta HIB_DATA					
 							; row 2 below the player
-							ldy px							; N1
+							ldy px							; N2
 							lda (LOB_DATA),y
 							sta SCREEN+$322+40
 							sta n2
-							ldy px							; W1	
+							ldy px							; W2	
 							iny								
 							lda (LOB_DATA),y
 							sta w2														
-							sta SCREEN+$323+40			
-							ldy px							; E1
+							sta SCREEN+$321+40				
+							ldy px							; E2
 							dey								
 							lda (LOB_DATA),y
 							sta e2							
-							sta SCREEN+$321+40		
+							sta SCREEN+$323+40			
 							; next row
 							lda LOB_DATA
 							clc
@@ -663,27 +671,21 @@ getFovSouth		lda #<map						; 		E0 PL W0
 							iny								
 							lda (LOB_DATA),y
 							sta w3														
-							sta SCREEN+$323								
+							sta SCREEN+$321								
 							ldy px							; E3						
 							dey								
 							lda (LOB_DATA),y
 							sta e3							
-							sta SCREEN+$321
-							
+							sta SCREEN+$323							
 							rts
 							
-getFovWest		lda #$17
-							sta SCREEN+$322+120	; print W
-							rts
-					
-							
-getWalls			lda #<map						; get low byte of the map
-							sta LOB_DATA				; store in zpage
-							lda #>map						; same for
-							sta HIB_DATA				; highbyte
+getFovWest		lda #<map																	; 		E3 N3 E3
+							sta LOB_DATA				; 		E2 N2	E2
+							lda #>map						; 		E1 N1	E1
+							sta HIB_DATA				;     E0 PL E0
 							ldy py
 							dey
-							beq +								; px-1 is 0? skip the row loop							
+							beq +									; py-1 is 0? were in the first row skip the row loop						
 -							lda LOB_DATA
 							clc
 							adc #MAPWIDTH
@@ -693,23 +695,53 @@ getWalls			lda #<map						; get low byte of the map
 							sta HIB_DATA
 							dey
 							bne -
-							; row in front of the player
-+							ldy px						; load the player x
-							lda (LOB_DATA),y
-							sta northWall1
 							
-							ldy px				; load the player x
-							iny						; this gives us the field to the north east of the player
+							; 1 rows in above of the player													
++							ldy px							; W0								
 							lda (LOB_DATA),y
-							sta eastWall2
-							
-							ldy px				; load the player x
-							dey						; this gives us the field to the north west of the player
+							sta e0
+							sta SCREEN+$323+120
+							dey
+						  beq +
 							lda (LOB_DATA),y
-							sta westWall2
+							sta e1
+							sta SCREEN+$323+80								
+							lda (LOB_DATA),y							
+							sta e2
+							sta SCREEN+$323+40								
+							lda (LOB_DATA),y
+							sta e3
+							sta SCREEN+$323	
 							
-							; last row (the row where the player is in)
-							; so add one more mapwidth to the data
+							; next row
++							lda LOB_DATA
+							clc
+							adc #MAPWIDTH
+							sta LOB_DATA
+							lda HIB_DATA
+							adc #0
+							sta HIB_DATA
+							
+							; row with the player
+							ldy px							; PL (N0)
+							lda #$17						
+							sta SCREEN+$322+120
+							
+							ldy px															
+							dey							
+							lda (LOB_DATA),y
+							sta n1
+							sta SCREEN+$322+80
+							dey							
+							lda (LOB_DATA),y							
+							sta n2
+							sta SCREEN+$322+40
+							dey							
+							lda (LOB_DATA),y
+							sta n3
+							sta SCREEN+$322	
+							
+							; next row
 							lda LOB_DATA
 							clc
 							adc #MAPWIDTH
@@ -718,130 +750,26 @@ getWalls			lda #<map						; get low byte of the map
 							adc #0
 							sta HIB_DATA
 							
-							ldy px				; load the player x
-							iny						; this gives us the field to the east of the player
+							; row below the player
+							ldy px																						
 							lda (LOB_DATA),y
-							sta eastWall1
-							
-							ldy px				; load the player x
-							dey						; this gives us the field to the west of the player
+							sta w0
+							sta SCREEN+$321+120
+							dey							
+							lda (LOB_DATA),y							
+							sta w1
+							sta SCREEN+$321+80
+							dey							
 							lda (LOB_DATA),y
-							sta westWall1
-							
-				      rts	
+							sta w2
+							sta SCREEN+$321+40			
+							dey							
+							lda (LOB_DATA),y
+							sta w3
+							sta SCREEN+$321		
 					
-eastWall1  		!byte 0
-westWall1	 		!byte 0		
-northWall1 		!byte 0
-
-eastWall2	 		!byte 0
-westWall2	 		!byte 0
-
-
-;																													
-;					1 2 3	  possible map positions
-;     		4 6 5   draw walls in ascendin
-;					7 9 8	  order to get correct
-;					B x A	  canvas layers			 					
-;																													
-;			 87654321																				
-;lda #%00000000
-;sta WALLMASK1
-;					-----BA9
-;lda #%00000000
-;sta WALLMASK2
-
-setWalls			lda #0					; first we clear all walls
-							sta WALLMASK1
-							sta WALLMASK2
-							lda eastWall1		; #1 east wall east to ppos
-							cmp #W
-							bne ++
-							lda pd
-							cmp #NORTH
-							bne +
-							lda #E0
-+							cmp #SOUTH
-							bne +
-							lda #W0
-+							cmp #EAST
-							bne +
-							lda #N1
-+							cmp #WEST
-							bne +
-							lda #0						
-+							ora WALLMASK2
-							sta WALLMASK2							
-++						lda westWall1		; #1 west wall east to ppos
-							cmp #W
-							bne ++
-							lda pd
-							cmp #NORTH
-							bne +
-							lda #2
-+							cmp #SOUTH
-							bne +
-							lda #4
-+							cmp #WEST
-							bne +
-							lda #1
-+							cmp #EAST
-							bne +
-							lda #0
-+							ora WALLMASK2
-							sta WALLMASK2							
-++					  lda northWall1		; #1 north wall east to ppos
-							cmp #W
-							bne ++
-							lda pd
-							cmp #NORTH
-							bne +
-							lda #1
-+							cmp #EAST
-							bne +
-							lda #2
-+							cmp #WEST
-							bne +
-							lda #4
-+							cmp #SOUTH
-							bne +
-							lda #0						
-+							ora WALLMASK2
-							sta WALLMASK2
-++						lda eastWall2			; #2 east wall east to ppos
-							cmp #W
-							bne ++
-							lda pd
-							cmp #NORTH
-							bne +
-							lda #128
-+							cmp #EAST
-							bne +
-							lda #64
-+							cmp #SOUTH
-							bne +
-							lda #0
-+							ora WALLMASK1
-							sta WALLMASK1
-++						lda westWall2				; #2 west wall east to ppos
-							cmp #W
-							bne ++
-							lda pd
-							cmp #NORTH
-							bne +
-							lda #64
-+							cmp #WEST
-							bne +
-							lda #128
-+							cmp #SOUTH
-							bne +
-							lda #0
-+							cmp #EAST
-							bne +
-							lda #0
-+							ora WALLMASK1
-							sta WALLMASK1
-++						rts
++++						rts
+					
 							
 setDirection	lda pd
 							cmp #NORTH
@@ -1053,44 +981,78 @@ initCanvas		jsr drawHorizon
 							jsr drawN3
 							pla
 							tay
-							
-;							lda WALLMASK1
-;							sta WALLMASKT
-;							lsr WALLMASKT
-;							bcc +
-;							jsr drawW3
-;+						  lsr WALLMASKT
-;							bcc +
-;							jsr drawN3														
-;+						  lsr WALLMASKT
-;							bcc +
-;							jsr drawE3
-;+							lsr WALLMASKT
-;							bcc +
-;							jsr drawW2
-;+							lsr WALLMASKT
-;							bcc +
-;							jsr drawE2
-;+							lsr WALLMASKT
-;							bcc +
-;							jsr drawN2
-;+							lsr WALLMASKT
-;							bcc +
-;							jsr drawW1
-;+							lsr WALLMASKT
-;							bcc +
-;							jsr drawE1	
-;+						  lda WALLMASK2		; next wallmask byte here
-;							sta WALLMASKT
-;							lsr WALLMASKT
-;							bcc +		
-;							jsr drawN1
-;+							lsr WALLMASKT
-;							bcc +
-;							jsr drawW0	
-;+							lsr WALLMASKT
-;							bcc +
-;							jsr drawE0							
++							iny							
+							lda (FOVLO),y
+							cmp #W
+							bne +
+							tya
+							pha
+							jsr drawW2
+							pla
+							tay	
++							iny							
+							lda (FOVLO),y
+							cmp #W
+							bne +
+							tya
+							pha
+							jsr drawE2
+							pla
+							tay
++							iny							
+							lda (FOVLO),y
+							cmp #W
+							bne +
+							tya
+							pha
+							jsr drawN2
+							pla
+							tay
++							iny							
+							lda (FOVLO),y
+							cmp #W
+							bne +
+							tya
+							pha
+							jsr drawW1
+							pla
+							tay	
++							iny							
+							lda (FOVLO),y
+							cmp #W
+							bne +
+							tya
+							pha
+							jsr drawE1
+							pla
+							tay
++							iny							
+							lda (FOVLO),y
+							cmp #W
+							bne +
+							tya
+							pha
+							jsr drawN1
+							pla
+							tay
++							iny							
+							lda (FOVLO),y
+							cmp #W
+							bne +
+							tya
+							pha
+							jsr drawW0
+							pla
+							tay
++							iny							
+							lda (FOVLO),y
+							cmp #W
+							bne +
+							tya
+							pha
+							jsr drawE0
+							pla
+							tay														
 +							rts					
 
 !zone drawCanvas						; single routines for drawing walls, floor and ceiling
