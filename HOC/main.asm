@@ -43,6 +43,13 @@ ICON_EAST				= 29
 ICON_SOUTH			= 30
 ICON_WEST				= 31
 
+; compass
+COMPASSPOS			= SCREEN+$2e2
+COMPASSNORTH		= SCREEN+$293
+COMPASSEAST			= SCREEN+$293
+COMPASSSOUTH		= SCREEN+$3ab
+COMPASSWEST			= SCREEN+$293
+
 ;wall offsets
 W1POS 					= SCREEN+$51
 W1CPOS 					= SCREENCOLOR+$51
@@ -397,19 +404,19 @@ getFovNorth		lda #<map						; 		E3 N3 E3
 +							ldy px						; load the player x
 							lda (LOB_DATA),y
 							sta n3						; N3
-							sta SCREEN+$322
+							sta COMPASSPOS+1
 														
 							ldy px						
 							iny								
 							lda (LOB_DATA),y
 							sta e3						; E3
-							sta SCREEN+$323
+							sta COMPASSPOS+2
 							
 							ldy px						
 							dey								
 							lda (LOB_DATA),y
 							sta w3						; W3
-							sta SCREEN+$321
+							sta COMPASSPOS
 							; next row
 							lda LOB_DATA
 							clc
@@ -422,19 +429,19 @@ getFovNorth		lda #<map						; 		E3 N3 E3
 ++						ldy px						; load the player x
 							lda (LOB_DATA),y
 							sta n2						; N2
-							sta SCREEN+$322+40
+							sta COMPASSPOS+41
 														
 							ldy px						
 							iny								
 							lda (LOB_DATA),y
 							sta e2						; E2
-							sta SCREEN+$323+40
+							sta COMPASSPOS+42
 							
 							ldy px						
 							dey								
 							lda (LOB_DATA),y
 							sta w2						; W2
-							sta SCREEN+$321+40
+							sta COMPASSPOS+40
 							; next row
 							lda LOB_DATA
 							clc
@@ -447,19 +454,19 @@ getFovNorth		lda #<map						; 		E3 N3 E3
 +++ 					ldy px						; load the player x
 							lda (LOB_DATA),y
 							sta n1						; N1
-							sta SCREEN+$322+80
+							sta COMPASSPOS+81
 														
 							ldy px						
 							iny								
 							lda (LOB_DATA),y
 							sta e1						; E1
-							sta SCREEN+$323+80
+							sta COMPASSPOS+82
 							
 							ldy px						
 							dey								
 							lda (LOB_DATA),y
 							sta w1						; W2
-							sta SCREEN+$321+80
+							sta COMPASSPOS+80
 							; next row
 							lda LOB_DATA
 							clc
@@ -472,19 +479,19 @@ getFovNorth		lda #<map						; 		E3 N3 E3
 
 ++++ 					ldy px						; load the player x
 							lda #$0e					; print N
-							sta SCREEN+$322+120
+							sta COMPASSNORTH
 														
 							ldy px						
 							iny								
 							lda (LOB_DATA),y
 							sta e0						; E0
-							sta SCREEN+$323+120
+							sta COMPASSPOS+122
 							
 							ldy px						
 							dey								
 							lda (LOB_DATA),y
 							sta w0						; W0
-							sta SCREEN+$321+120
+							sta COMPASSPOS+120
 							
 							rts							
 
@@ -505,24 +512,23 @@ getFovEast		lda #<map												; 		E3 N3 E3
 							sta HIB_DATA
 							dey
 							bne -
-							
 							; 1 rows in above of the player													
 +							ldy px							; W0								
 							lda (LOB_DATA),y
 							sta w0
-							sta SCREEN+$321+120
+							sta COMPASSPOS+120
 							iny							
 							lda (LOB_DATA),y
 							sta w1
-							sta SCREEN+$321+80
+							sta COMPASSPOS+80
 							iny							
 							lda (LOB_DATA),y							
 							sta w2
-							sta SCREEN+$321+40
+							sta COMPASSPOS+40
 							iny							
 							lda (LOB_DATA),y
 							sta w3
-							sta SCREEN+$321	
+							sta COMPASSPOS	
 							
 							; next row
 							lda LOB_DATA
@@ -533,21 +539,20 @@ getFovEast		lda #<map												; 		E3 N3 E3
 							adc #0
 							sta HIB_DATA
 							
-							; row with the player						
-							
+							; row with the player											
 							ldy px							; W0								
 							iny							
 							lda (LOB_DATA),y
 							sta n1
-							sta SCREEN+$322+80
+							sta COMPASSPOS+81
 							iny							
 							lda (LOB_DATA),y							
 							sta n2
-							sta SCREEN+$322+40
+							sta COMPASSPOS+41
 							iny							
 							lda (LOB_DATA),y
 							sta n3
-							sta SCREEN+$322	
+							sta COMPASSPOS+1	
 							
 							; next row
 							lda LOB_DATA
@@ -562,20 +567,19 @@ getFovEast		lda #<map												; 		E3 N3 E3
 							ldy px																						
 							lda (LOB_DATA),y
 							sta e0
-							sta SCREEN+$323+120
+							sta COMPASSPOS+122
 							iny							
 							lda (LOB_DATA),y							
 							sta e1
-							sta SCREEN+$323+80
+							sta COMPASSPOS+82
 							iny							
 							lda (LOB_DATA),y
 							sta e2
-							sta SCREEN+$323+40		
+							sta COMPASSPOS+42		
 							iny							
 							lda (LOB_DATA),y
 							sta e3
-							sta SCREEN+$323		
-					
+							sta COMPASSPOS+2
 +++						rts
 							
 							
@@ -596,17 +600,17 @@ getFovSouth		lda #<map						; 		E0 PL W0
 							; row 0 with the player
 ++++ 					ldy px							; PL (N0)
 							lda #$13						
-							sta SCREEN+$322+120														
+							sta COMPASSNORTH														
 							ldy px							; W0
 							iny								
 							lda (LOB_DATA),y
 							sta w0							
-							sta SCREEN+$321+120							
+							sta COMPASSPOS+120							
 							ldy px							; E0					
 							dey								
 							lda (LOB_DATA),y
 							sta e0						
-							sta SCREEN+$323+120
+							sta COMPASSPOS+122
 							; next row
 							lda LOB_DATA
 							clc
@@ -618,19 +622,19 @@ getFovSouth		lda #<map						; 		E0 PL W0
 							; row 1 below the player
 							ldy px							; N1
 							lda (LOB_DATA),y
-							sta SCREEN+$322+80
+							sta COMPASSPOS+81
 							sta n1
 
 							ldy px							; W1				
 							iny								
 							lda (LOB_DATA),y
 							sta w1														
-							sta SCREEN+$321+80		
+							sta COMPASSPOS+80		
 							ldy px							; E1
 							dey								
 							lda (LOB_DATA),y
 							sta e1							
-							sta SCREEN+$323+80						
+							sta COMPASSPOS+82						
 							; next row
 							lda LOB_DATA
 							clc
@@ -642,18 +646,18 @@ getFovSouth		lda #<map						; 		E0 PL W0
 							; row 2 below the player
 							ldy px							; N2
 							lda (LOB_DATA),y
-							sta SCREEN+$322+40
+							sta COMPASSPOS+41
 							sta n2
 							ldy px							; W2	
 							iny								
 							lda (LOB_DATA),y
 							sta w2														
-							sta SCREEN+$321+40				
+							sta COMPASSPOS+40				
 							ldy px							; E2
 							dey								
 							lda (LOB_DATA),y
 							sta e2							
-							sta SCREEN+$323+40			
+							sta COMPASSPOS+42			
 							; next row
 							lda LOB_DATA
 							clc
@@ -665,18 +669,18 @@ getFovSouth		lda #<map						; 		E0 PL W0
 							; row 3 below the player
 							ldy px							; N3							
 							lda (LOB_DATA),y
-							sta SCREEN+$322
+							sta COMPASSPOS+1
 							sta n3														
 							ldy px							; W3						
 							iny								
 							lda (LOB_DATA),y
 							sta w3														
-							sta SCREEN+$321								
+							sta COMPASSPOS								
 							ldy px							; E3						
 							dey								
 							lda (LOB_DATA),y
 							sta e3							
-							sta SCREEN+$323							
+							sta COMPASSPOS+2							
 							rts
 							
 getFovWest		lda #<map																	; 		E3 N3 E3
@@ -700,18 +704,18 @@ getFovWest		lda #<map																	; 		E3 N3 E3
 +							ldy px							; W0								
 							lda (LOB_DATA),y
 							sta e0
-							sta SCREEN+$323+120
+							sta COMPASSPOS+122
 							dey
 						  beq +
 							lda (LOB_DATA),y
 							sta e1
-							sta SCREEN+$323+80								
+							sta COMPASSPOS+82								
 							lda (LOB_DATA),y							
 							sta e2
-							sta SCREEN+$323+40								
+							sta COMPASSPOS+42								
 							lda (LOB_DATA),y
 							sta e3
-							sta SCREEN+$323	
+							sta COMPASSPOS+2	
 							
 							; next row
 +							lda LOB_DATA
@@ -725,21 +729,21 @@ getFovWest		lda #<map																	; 		E3 N3 E3
 							; row with the player
 							ldy px							; PL (N0)
 							lda #$17						
-							sta SCREEN+$322+120
+							sta COMPASSNORTH
 							
 							ldy px															
 							dey							
 							lda (LOB_DATA),y
 							sta n1
-							sta SCREEN+$322+80
+							sta COMPASSPOS+81
 							dey							
 							lda (LOB_DATA),y							
 							sta n2
-							sta SCREEN+$322+40
+							sta COMPASSPOS+41
 							dey							
 							lda (LOB_DATA),y
 							sta n3
-							sta SCREEN+$322	
+							sta COMPASSPOS+1	
 							
 							; next row
 							lda LOB_DATA
@@ -754,19 +758,19 @@ getFovWest		lda #<map																	; 		E3 N3 E3
 							ldy px																						
 							lda (LOB_DATA),y
 							sta w0
-							sta SCREEN+$321+120
+							sta COMPASSPOS+120
 							dey							
 							lda (LOB_DATA),y							
 							sta w1
-							sta SCREEN+$321+80
+							sta COMPASSPOS+80
 							dey							
 							lda (LOB_DATA),y
 							sta w2
-							sta SCREEN+$321+40			
+							sta COMPASSPOS+40			
 							dey							
 							lda (LOB_DATA),y
 							sta w3
-							sta SCREEN+$321		
+							sta COMPASSPOS		
 					
 +++						rts
 					
@@ -1546,12 +1550,12 @@ datUi				!media "assets\ui.charscreen",char,0,0,40,25
 datUiC			!media "assets\ui.charscreen",color,0,0,40,25
 						
 !zone canvasData
-datHorizon  !media "assets\dungeon.charscreen",char,0,0,18,15											
-datHorizonC !media "assets\dungeon.charscreen",color,0,0,18,15
-datW1				!media "assets\dungeon.charscreen",char,30,12,4,13
-datW1C			!media "assets\dungeon.charscreen",color,30,12,4,13
-datE1				!media "assets\dungeon.charscreen",char,34,12,4,13
-datE1C			!media "assets\dungeon.charscreen",color,34,12,4,13
+datHorizon  !media "assets\dungeon0.charscreen",char,0,0,18,15											
+datHorizonC !media "assets\dungeon0.charscreen",color,0,0,18,15
+datW1				!media "assets\dungeon0.charscreen",char,30,12,4,13
+datW1C			!media "assets\dungeon0.charscreen",color,30,12,4,13
+datE1				!media "assets\dungeon0.charscreen",char,34,12,4,13
+datE1C			!media "assets\dungeon0.charscreen",color,34,12,4,13
 
 *=$2000
-!media "assets\dungeon.charscreen",CHARSET
+!media "assets\dungeon0.charscreen",CHARSET
