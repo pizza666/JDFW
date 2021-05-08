@@ -1,11 +1,8 @@
 !source "..\_includes\system_const.asm"
 *=$801
-!basic $80d
+!basic main
 
-; #  conts go here - outsourcing
-; #  if it gets to large
-; ######################################
-
+!zone constants
 ; fov vector
 FOVLO						= $05
 FOVHI						= $06
@@ -77,7 +74,8 @@ KEYROW_8				= %01111111 ; (127/$7f)     | STOP  ($  )|   q   ($11)|COMMODR($  )|
 														;+----+---------+------------+------------+------------+------------+------------+------------+------------+------------+
 ; drawing consts
 
-*=$80d
+;*=$80d
+main
 !zone initGame
 							; black screen and clear
 							lda #00
